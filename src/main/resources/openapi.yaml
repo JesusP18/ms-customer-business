@@ -1,0 +1,168 @@
+openapi: 3.0.1
+info:
+  title: Customer API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /api/customers:
+    get:
+      summary: Listar todos los clientes
+      operationId: getAllCustomers
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerResponse'
+              examples:
+                sample:
+                  summary: ejemplo lista
+                  value:
+                    - id: "1"
+                      customerType: "PERSONAL"
+                      firstName: "Juan"
+                      lastName: "Perez"
+    post:
+      summary: Crear un cliente
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+            example:
+              customerType: "PERSONAL"
+              firstName: "Ana"
+              lastName: "Gomez"
+              dni: "12345678"
+      responses:
+        '201':
+          description: Cliente creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+              example:
+                id: "generated-id-123"
+                customerType: "PERSONAL"
+                firstName: "Ana"
+                lastName: "Gomez"
+                dni: "12345678"
+
+  /api/customers/{id}:
+    get:
+      summary: Obtener cliente por ID
+      operationId: getCustomerById
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+              example:
+                id: "1"
+                customerType: "PERSONAL"
+                firstName: "Juan"
+                lastName: "Perez"
+    put:
+      summary: Actualizar cliente
+      operationId: updateCustomer
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        '200':
+          description: Cliente actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+    delete:
+      summary: Eliminar cliente
+      operationId: deleteCustomer
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+      responses:
+        '204':
+          description: Cliente eliminado
+
+components:
+  schemas:
+    # Request para crear/actualizar (sin id)
+    CustomerRequest:
+      type: object
+      required:
+        - customerType
+        - firstName
+      properties:
+        customerType:
+          type: string
+          enum: [PERSONAL, EMPRESA]
+        firstName:
+          type: string
+        lastName:
+          type: string
+        businessName:
+          type: string
+        dni:
+          type: string
+        ruc:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+
+    # Response que incluye id (lo que devuelve la API)
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        customerType:
+          type: string
+          enum: [PERSONAL, EMPRESA]
+        firstName:
+          type: string
+        lastName:
+          type: string
+        businessName:
+          type: string
+        dni:
+          type: string
+        ruc:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
