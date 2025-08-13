@@ -1,0 +1,101 @@
+[
+  {
+    "customerType": "PERSONAL",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "businessName": null,
+    "dni": "42851723",
+    "ruc": null,
+    "address": "Av. Libertad 123, Lima",
+    "phone": "+51 987654321",
+    "email": "juan.perez@example.com"
+  },
+  {
+    "customerType": "PERSONAL",
+    "firstName": "María",
+    "lastName": "García",
+    "businessName": null,
+    "dni": "07234567",
+    "ruc": null,
+    "address": "Jr. Los Álamos 45, Cusco",
+    "phone": "+51 944123456",
+    "email": "maria.garcia@example.com"
+  },
+  {
+    "customerType": "EMPRESA",
+    "firstName": null,
+    "lastName": null,
+    "businessName": "Soluciones SAC",
+    "dni": null,
+    "ruc": "20123456789",
+    "address": "Pq. Industrial N°7, Arequipa",
+    "phone": "+51 952000111",
+    "email": "info@soluciones.com.pe"
+  },
+  {
+    "customerType": "PERSONAL",
+    "firstName": "Luis",
+    "lastName": "Ramírez",
+    "businessName": null,
+    "dni": "15896325",
+    "ruc": null,
+    "address": "Calle Falsa 123, Trujillo",
+    "phone": "+51 976543210",
+    "email": "luis.ramirez@example.org"
+  },
+  {
+    "customerType": "EMPRESA",
+    "firstName": null,
+    "lastName": null,
+    "businessName": "TecnoWorld EIRL",
+    "dni": null,
+    "ruc": "20654321987",
+    "address": "Malecón 500, Miraflores, Lima",
+    "phone": "+51 987112233",
+    "email": "contacto@tecnoworld.pe"
+  },
+  {
+    "customerType": "PERSONAL",
+    "firstName": "Ana",
+    "lastName": "Lopez",
+    "businessName": null,
+    "dni": "20987654",
+    "ruc": null,
+    "address": "Av. Grau 88, Piura",
+    "phone": "+51 945678901",
+    "email": "ana.lopez@example.net"
+  },
+  {
+    "customerType": "PERSONAL",
+    "firstName": "Carlos",
+    "lastName": "Mendoza",
+    "businessName": null,
+    "dni": "33445566",
+    "ruc": null,
+    "address": "Av. El Sol 77, Iquitos",
+    "phone": "+51 912345678",
+    "email": "carlos.mendoza@example.com"
+  },
+  {
+    "customerType": "EMPRESA",
+    "firstName": null,
+    "lastName": null,
+    "businessName": "Comercial Norte SAC",
+    "dni": null,
+    "ruc": "20567894321",
+    "address": "Zona Comercial N°4, Chiclayo",
+    "phone": "+51 961234567",
+    "email": "ventas@comercialnorte.pe"
+  },
+  {
+    "customerType": "PERSONAL",
+    "firstName": "Sofía",
+    "lastName": "Vargas",
+    "businessName": null,
+    "dni": "44556677",
+    "ruc": null,
+    "address": "Jr. Primavera 10, Huancayo",
+    "phone": "+51 999888777",
+    "email": "sofia.vargas@example.org"
+  }
+]
