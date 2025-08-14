@@ -16,55 +16,55 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public final class CustomerMapper {
 
-    public static Customer getCustomerofCustomerRequest(CustomerRequest req) {
-        if (req == null) return null;
+    public static Customer getCustomerofCustomerRequest(CustomerRequest request) {
+        if (request == null) return null;
 
-        Customer e = new Customer();
+        Customer customer = new Customer();
 
-        e.setId(null);
+        customer.setId(null);
 
-        if (req.getCustomerType() != null) {
-            e.setCustomerType(req.getCustomerType().toString());
+        if (request.getCustomerType() != null) {
+            customer.setCustomerType(request.getCustomerType().toString());
         } else {
-            e.setCustomerType(null);
+            customer.setCustomerType(null);
         }
 
-        e.setFirstName(req.getFirstName());
-        e.setLastName(req.getLastName());
-        e.setBusinessName(req.getBusinessName());
-        e.setDni(req.getDni());
-        e.setRuc(req.getRuc());
-        e.setAddress(req.getAddress());
-        e.setPhone(req.getPhone());
-        e.setEmail(req.getEmail());
-        return e;
+        customer.setFirstName(request.getFirstName());
+        customer.setLastName(request.getLastName());
+        customer.setBusinessName(request.getBusinessName());
+        customer.setDni(request.getDni());
+        customer.setRuc(request.getRuc());
+        customer.setAddress(request.getAddress());
+        customer.setPhone(request.getPhone());
+        customer.setEmail(request.getEmail());
+        return customer;
     }
 
-    public static CustomerResponse getCustomerResponseOfCustomer(Customer e) {
-        if (e == null) return null;
+    public static CustomerResponse getCustomerResponseOfCustomer(Customer customer) {
+        if (customer == null) return null;
 
-        CustomerResponse r = new CustomerResponse();
-        r.setId(e.getId());
+        CustomerResponse response = new CustomerResponse();
+        response.setId(customer.getId());
 
-        if (e.getCustomerType() != null) {
+        if (customer.getCustomerType() != null) {
             try {
-                r.setCustomerType(CustomerResponse.CustomerTypeEnum.fromValue(e.getCustomerType()));
+                response.setCustomerType(CustomerResponse.CustomerTypeEnum.fromValue(customer.getCustomerType()));
             } catch (IllegalArgumentException ex) {
-                r.setCustomerType(null);
+                response.setCustomerType(null);
             }
         } else {
-            r.setCustomerType(null);
+            response.setCustomerType(null);
         }
 
-        r.setFirstName(e.getFirstName());
-        r.setLastName(e.getLastName());
-        r.setBusinessName(e.getBusinessName());
-        r.setDni(e.getDni());
-        r.setRuc(e.getRuc());
-        r.setAddress(e.getAddress());
-        r.setPhone(e.getPhone());
-        r.setEmail(e.getEmail());
+        response.setFirstName(customer.getFirstName());
+        response.setLastName(customer.getLastName());
+        response.setBusinessName(customer.getBusinessName());
+        response.setDni(customer.getDni());
+        response.setRuc(customer.getRuc());
+        response.setAddress(customer.getAddress());
+        response.setPhone(customer.getPhone());
+        response.setEmail(customer.getEmail());
 
-        return r;
+        return response;
     }
 }
