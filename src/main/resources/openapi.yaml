@@ -140,6 +140,10 @@ components:
           type: string
         email:
           type: string
+        products:
+          type: array
+          items:
+            type: string
 
     # Response que incluye id (lo que devuelve la API)
     CustomerResponse:
@@ -166,3 +170,7 @@ components:
           type: string
         email:
           type: string
+        products:
+          type: array
+          items:
+            type: string

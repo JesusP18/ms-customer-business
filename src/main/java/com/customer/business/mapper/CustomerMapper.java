@@ -5,6 +5,8 @@ import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.entity.Customer;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+
 /**
  * Mapper entre:
  * - DTOs generados por OpenAPI: CustomerRequest, CustomerResponse
@@ -37,6 +39,7 @@ public final class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
+        customer.setProducts(request.getProducts() == null ? new ArrayList<>() : new ArrayList<>(request.getProducts()));
         return customer;
     }
 
@@ -65,6 +68,11 @@ public final class CustomerMapper {
         response.setPhone(customer.getPhone());
         response.setEmail(customer.getEmail());
 
+        if (customer.getProducts() != null) {
+            response.setProducts(new ArrayList<>(customer.getProducts()));
+        } else {
+            response.setProducts(new ArrayList<>());
+        }
         return response;
     }
 }

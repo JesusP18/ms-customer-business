@@ -4,6 +4,8 @@ import lombok.*;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -23,4 +25,6 @@ public class Customer {
     private String address;
     private String phone;
     private String email;
+
+    private List<String> products; // Lista de IDs de productos asociados al cliente
 }
