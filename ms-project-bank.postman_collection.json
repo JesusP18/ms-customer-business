@@ -16,12 +16,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8001/api/customers",
+							"raw": "http://localhost:8081/api/customers",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8001",
+							"port": "8081",
 							"path": [
 								"api",
 								"customers"
@@ -36,12 +36,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8001/api/customers/689ce12a2a02a3d7775e81b8",
+							"raw": "http://localhost:8081/api/customers/689ce12a2a02a3d7775e81b8",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8001",
+							"port": "8081",
 							"path": [
 								"api",
 								"customers",
@@ -58,7 +58,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n        \"customerType\": \"PERSONAL\",\r\n        \"firstName\": \"Sofía 2\",\r\n        \"lastName\": \"Vargas 2\",\r\n        \"businessName\": \"test\",\r\n        \"dni\": \"88881111\",\r\n        \"ruc\": \"2061561517\",\r\n        \"address\": \"Jr. Primavera 10, Huancayo2\",\r\n        \"phone\": \"+51 999888777\",\r\n        \"email\": \"sofia.vargas@example.org\",\r\n        \"createdAt\": \"2025-07-08T18:50:00Z\",\r\n        \"updatedAt\": \"2025-07-08T18:50:00Z\"\r\n    }",
+							"raw": "{\r\n    \"customerType\": \"PERSONAL\",\r\n    \"firstName\": \"Juan 2\",\r\n    \"lastName\": \"Pérez 2\",\r\n    \"businessName\": \"test\",\r\n    \"dni\": \"88884444\",\r\n    \"ruc\": \"2098181511\",\r\n    \"address\": \"Av. Libertad 123, Lima 2\",\r\n    \"phone\": \"+51 987444111\",\r\n    \"email\": \"juan.perez2@example.com\",\r\n    \"productIds\": [\"1\", \"2\", \"3\"]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -66,12 +66,12 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:8001/api/customers",
+							"raw": "http://localhost:8081/api/customers",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8001",
+							"port": "8081",
 							"path": [
 								"api",
 								"customers"
@@ -95,12 +95,12 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:8001/api/customers/689ce12a2a02a3d7775e81b4",
+							"raw": "http://localhost:8081/api/customers/689ce12a2a02a3d7775e81b4",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8001",
+							"port": "8081",
 							"path": [
 								"api",
 								"customers",
@@ -116,16 +116,108 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8001/api/customers/689ce166c9540c224441761c",
+							"raw": "http://localhost:8081/api/customers/689ce166c9540c224441761c",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8001",
+							"port": "8081",
 							"path": [
 								"api",
 								"customers",
 								"689ce166c9540c224441761c"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get-Products-From-Customer-Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/customers/68a0bcf8db876056afd218b0/products",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"customers",
+								"68a0bcf8db876056afd218b0",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-Products-From-Customer-Id",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"productId\": \"4\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/customers/68a0bcf8db876056afd218b0/products",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"customers",
+								"68a0bcf8db876056afd218b0",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-Products-From-Customer-Id Copy",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/customers/68a0bcf8db876056afd218b0/products/2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"customers",
+								"68a0bcf8db876056afd218b0",
+								"products",
+								"2"
 							]
 						}
 					},

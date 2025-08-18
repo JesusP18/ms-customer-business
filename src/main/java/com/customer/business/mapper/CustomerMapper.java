@@ -39,7 +39,7 @@ public final class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
-        customer.setProducts(request.getProducts() == null ? new ArrayList<>() : new ArrayList<>(request.getProducts()));
+        customer.setProductIds(request.getProductIds() == null ? new ArrayList<>() : new ArrayList<>(request.getProductIds()));
         return customer;
     }
 
@@ -68,10 +68,10 @@ public final class CustomerMapper {
         response.setPhone(customer.getPhone());
         response.setEmail(customer.getEmail());
 
-        if (customer.getProducts() != null) {
-            response.setProducts(new ArrayList<>(customer.getProducts()));
+        if (customer.getProductIds() != null) {
+            response.setProductIds(new ArrayList<>(customer.getProductIds()));
         } else {
-            response.setProducts(new ArrayList<>());
+            response.setProductIds(new ArrayList<>());
         }
         return response;
     }
