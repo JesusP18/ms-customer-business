@@ -4,6 +4,8 @@ import com.customer.business.model.entity.Customer;
 import com.customer.business.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +24,31 @@ public class CustomerService {
         return repository.save(c);
     }
     public void delete(String id) { repository.deleteById(id); }
+
+    public Customer addProduct(String customerId, String productId) {
+        Customer c = repository.findById(customerId)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+        if (c.getProductIds() == null) c.setProductIds(new ArrayList<>());
+        if (!c.getProductIds().contains(productId)) {
+            c.getProductIds().add(productId);
+            repository.save(c);
+        }
+        return c;
+    }
+
+    public Customer removeProduct(String customerId, String productId) {
+        Customer c = repository.findById(customerId)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+        if (c.getProductIds() != null && c.getProductIds().remove(productId)) {
+            repository.save(c);
+        }
+        return c;
+    }
+
+    public List<String> getProductIds(String customerId) {
+        return repository.findById(customerId)
+                .map(Customer::getProductIds)
+                .orElse(Collections.emptyList());
+    }
+
 }

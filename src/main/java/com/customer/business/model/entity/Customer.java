@@ -26,5 +26,5 @@ public class Customer {
     private String phone;
     private String email;
 
-    private List<String> products; // Lista de IDs de productos asociados al cliente
+    private List<String> productIds; // Lista de IDs de productos asociados al cliente
 }
