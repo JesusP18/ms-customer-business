@@ -10,14 +10,26 @@ import java.util.ArrayList;
 /**
  * Mapper entre:
  * - DTOs generados por OpenAPI: CustomerRequest, CustomerResponse
- * - Entity/documento Mongo: com.customer.business.model.entity.Customer
+ * - Entidad de base de datos: Customer
  *
- * Nota: CustomerRequest/Response vienen con enums internos CustomerTypeEnum (PERSONAL, EMPRESA).
- *       Entity usa un campo String customerType y Date createdAt/updatedAt.
+ * Nota: 
+ * - CustomerRequest/Response vienen con enums internos CustomerTypeEnum (PERSONAL, EMPRESA).
+ * - La entidad usa un campo String customerType para simplificar persistencia.
  */
 @NoArgsConstructor
 public final class CustomerMapper {
 
+    /**
+     * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API) 
+     * en un objeto {@link Customer} (entidad de base de datos).
+     *
+     * - El campo "customerType" del request (enum) se transforma a String.
+     * - Los campos nulos son tratados para evitar NullPointerExceptions.
+     * - Se inicializa la lista de productIds si no viene en el request.
+     *
+     * @param request DTO recibido en la API
+     * @return entidad Customer lista para ser persistida
+     */
     public static Customer getCustomerofCustomerRequest(CustomerRequest request) {
         if (request == null) return null;
 
@@ -43,6 +55,17 @@ public final class CustomerMapper {
         return customer;
     }
 
+    /**
+     * Convierte un objeto {@link Customer} (entidad de base de datos)
+     * en un objeto {@link CustomerResponse} (DTO para respuesta en la API).
+     *
+     * - El campo "customerType" (String en BD) se transforma en el enum esperado por la API.
+     * - Si el valor de "customerType" no corresponde con el enum, se setea como null.
+     * - La lista de productIds se copia para no exponer referencias mutables.
+     *
+     * @param customer entidad Customer proveniente de la BD
+     * @return DTO CustomerResponse para enviar en la respuesta de la API
+     */
     public static CustomerResponse getCustomerResponseOfCustomer(Customer customer) {
         if (customer == null) return null;
 
