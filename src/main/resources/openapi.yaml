@@ -1,6 +1,7 @@
 openapi: 3.0.1
 info:
   title: Customer API
+  description: API para gestionar clientes y sus productos asociados
   version: 1.0.0
 servers:
   - url: http://localhost:8080
@@ -19,14 +20,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/CustomerResponse'
-              examples:
-                sample:
-                  summary: ejemplo lista
-                  value:
-                    - id: "1"
-                      customerType: "PERSONAL"
-                      firstName: "Juan"
-                      lastName: "Perez"
     post:
       summary: Crear un cliente
       operationId: createCustomer
@@ -36,11 +29,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CustomerRequest'
-            example:
-              customerType: "PERSONAL"
-              firstName: "Ana"
-              lastName: "Gomez"
-              dni: "12345678"
       responses:
         '201':
           description: Cliente creado
@@ -48,12 +36,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomerResponse'
-              example:
-                id: "generated-id-123"
-                customerType: "PERSONAL"
-                firstName: "Ana"
-                lastName: "Gomez"
-                dni: "12345678"
 
   /api/customers/{id}:
     get:
@@ -72,11 +54,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomerResponse'
-              example:
-                id: "1"
-                customerType: "PERSONAL"
-                firstName: "Juan"
-                lastName: "Perez"
     put:
       summary: Actualizar cliente
       operationId: updateCustomer
@@ -129,9 +106,9 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: '#/components/schemas/ProductResponse'
     post:
-      summary: Agrega el id de un producto a un cliente
+      summary: Agrega un producto a un cliente
       operationId: addProductToCustomer
       parameters:
         - in: path
@@ -144,13 +121,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProductIdRequest'
+              $ref: '#/components/schemas/ProductRequest'
       responses:
         '204':
           description: Producto agregado al cliente
   /api/customers/{id}/products/{productId}:
     delete:
-      summary: Elimina un producto ID de un cliente
+      summary: Elimina un producto de un cliente
       operationId: removeProductFromCustomer
       parameters:
         - in: path
@@ -168,7 +145,6 @@ paths:
           description: Producto eliminado del cliente
 components:
   schemas:
-    # Request para crear/actualizar (sin id)
     CustomerRequest:
       type: object
       required:
@@ -194,12 +170,11 @@ components:
           type: string
         email:
           type: string
-        productIds:
+        products:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/ProductRequest'
 
-    # Response que incluye id (lo que devuelve la API)
     CustomerResponse:
       type: object
       properties:
@@ -224,10 +199,25 @@ components:
           type: string
         email:
           type: string
-        productIds:
+        products:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/ProductResponse'
+
+    ProductRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: string
+
     ProductIdRequest:
       type: object
       required:

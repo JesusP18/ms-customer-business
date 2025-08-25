@@ -1,7 +1,7 @@
 package com.customer.business.model.entity;
 
 import lombok.*;
-import org.bson.codecs.pojo.annotations.BsonId;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
@@ -11,10 +11,11 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Document(collection = "customers")
 public class Customer {
 
-    @BsonId
+    @Id
     private String id;
     private String customerType;
     private String firstName;
@@ -26,5 +27,5 @@ public class Customer {
     private String phone;
     private String email;
 
-    private List<String> productIds; // Lista de IDs de productos asociados al cliente
+    private List<Product> products; // Lista de productos asociados al cliente
 }
