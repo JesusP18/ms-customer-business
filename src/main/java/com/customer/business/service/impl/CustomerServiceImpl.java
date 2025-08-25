@@ -1,0 +1,135 @@
+package com.customer.business.service.impl;
+
+import com.customer.business.model.entity.Customer;
+import com.customer.business.repository.CustomerRepository;
+import com.customer.business.service.CustomerService;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Servicio que encapsula la lógica de negocio relacionada con los clientes.
+ * Se comunica con el repositorio {@link CustomerRepository} para persistencia en MongoDB.
+ */
+@AllArgsConstructor
+@Service
+public class CustomerServiceImpl implements CustomerService {
+
+    private final CustomerRepository repository;
+
+    /**
+     * Obtiene la lista de todos los clientes en la base de datos.
+     *
+     * @return lista de clientes
+     */
+    @Override
+    public List<Customer> findAll() { return repository.findAll(); }
+
+    /**
+     * Busca un cliente por su identificador.
+     *
+     * @param id identificador del cliente
+     * @return Optional con el cliente si existe, vacío si no
+     */
+    @Override
+    public Optional<Customer> findById(String id) { return repository.findById(id); }
+
+    /**
+     * Crea un nuevo cliente en la base de datos.
+     *
+     * @param c entidad del cliente a crear
+     * @return cliente persistido
+     */
+    @Override
+    public Customer create(Customer c) { return repository.save(c); }
+
+    /**
+     * Actualiza un cliente existente.
+     *
+     * - Si el cliente no existe, lanza una excepción.
+     * - El ID del cliente se fuerza para coincidir con el recibido en el parámetro.
+     *
+     * @param id identificador del cliente
+     * @param c datos a actualizar
+     * @return cliente actualizado
+     * @throws IllegalArgumentException si el cliente no existe
+     */
+    @Override
+    public Customer update(String id, Customer c) {
+        if (!repository.existsById(id)) throw new IllegalArgumentException("Customer not found with id: " + id);
+        c.setId(id);
+        return repository.save(c);
+    }
+
+    /**
+     * Elimina un cliente de la base de datos.
+     *
+     * @param id identificador del cliente a eliminar
+     */
+    @Override
+    public void delete(String id) { repository.deleteById(id); }
+
+    /**
+     * Agrega un producto a la lista de productos de un cliente.
+     *
+     * - Si el cliente no existe, lanza excepción.
+     * - Si la lista de productos está vacía, se inicializa.
+     * - Evita duplicados: solo agrega el producto si no está ya presente.
+     *
+     * @param customerId identificador del cliente
+     * @param productId identificador del producto a agregar
+     * @return cliente con la lista de productos actualizada
+     * @throws IllegalArgumentException si el cliente no existe
+     */
+    @Override
+    public Customer addProduct(String customerId, String productId) {
+        Customer c = repository.findById(customerId)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+        if (c.getProductIds() == null) c.setProductIds(new ArrayList<>());
+        if (!c.getProductIds().contains(productId)) {
+            c.getProductIds().add(productId);
+            repository.save(c);
+        }
+        return c;
+    }
+
+    /**
+     * Elimina un producto de la lista de productos de un cliente.
+     *
+     * - Si el cliente no existe, lanza excepción.
+     * - Si la lista contiene el producto, se elimina y se guarda la entidad.
+     *
+     * @param customerId identificador del cliente
+     * @param productId identificador del producto a eliminar
+     * @return cliente con la lista de productos actualizada
+     * @throws IllegalArgumentException si el cliente no existe
+     */
+    @Override
+    public Customer removeProduct(String customerId, String productId) {
+        Customer c = repository.findById(customerId)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+        if (c.getProductIds() != null && c.getProductIds().remove(productId)) {
+            repository.save(c);
+        }
+        return c;
+    }
+
+    /**
+     * Obtiene la lista de IDs de productos asociados a un cliente.
+     *
+     * - Si el cliente no existe, devuelve una lista vacía.
+     *
+     * @param customerId identificador del cliente
+     * @return lista de IDs de productos
+     */
+    @Override
+    public List<String> getProductIds(String customerId) {
+        return repository.findById(customerId)
+                .map(Customer::getProductIds)
+                .orElse(Collections.emptyList());
+    }
+}

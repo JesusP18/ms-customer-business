@@ -7,9 +7,11 @@ import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.ProductIdRequest;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.service.CustomerService;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,14 +25,14 @@ import java.util.stream.Collectors;
  * - Llamar a la capa de negocio {@link CustomerService}.
  * - Retornar respuestas apropiadas con {@link ResponseEntity}.
  */
-@Service
+@Slf4j
+@AllArgsConstructor
+@Component
 public class CustomerApiDelegateImpl implements ApiApiDelegate {
 
     private final CustomerService customerService;
 
-    public CustomerApiDelegateImpl(CustomerService customerService) {
-        this.customerService = customerService;
-    }
+    private final CustomerMapper customerMapper;
 
     /**
      * Crea un nuevo cliente.
@@ -40,10 +42,16 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<CustomerResponse> createCustomer(CustomerRequest customerRequest) {
-        Customer customer = CustomerMapper.getCustomerofCustomerRequest(customerRequest);
+        log.info("[CREATE_CUSTOMER] Solicitud para crear un nuevo cliente: {}", customerRequest);
+
+        Customer customer = customerMapper.getCustomerofCustomerRequest(customerRequest);
 
         Customer saved = customerService.create(customer);
-        CustomerResponse resp = CustomerMapper.getCustomerResponseOfCustomer(saved);
+
+        log.debug("[CREATE_CUSTOMER] Cliente guardado en base de datos: {}", saved);
+        CustomerResponse resp = customerMapper.getCustomerResponseOfCustomer(saved);
+
+        log.info("[CREATE_CUSTOMER] Cliente creado exitosamente con ID={}", resp.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
@@ -58,12 +66,18 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<Void> deleteCustomer(String id) {
+        log.info("[DELETE_CUSTOMER] Solicitud para eliminar cliente con ID={}", id);
+
         return customerService.findById(id)
-                .map(c -> {
+                .map(customer -> {
                     customerService.delete(id);
+                    log.info("[DELETE_CUSTOMER] Cliente eliminado con éxito. ID={}", id);
                     return ResponseEntity.noContent().<Void>build();
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    log.warn("[DELETE_CUSTOMER] No se encontró cliente con ID={} para eliminación", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     /**
@@ -73,10 +87,15 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<List<CustomerResponse>> getAllCustomers() {
+        log.info("[GET_ALL_CUSTOMERS] Solicitud para obtener todos los clientes");
         List<Customer> list = customerService.findAll();
+
+        log.debug("[GET_ALL_CUSTOMERS] Clientes encontrados en BD: {}", list);
         List<CustomerResponse> responses = list.stream()
-                .map(CustomerMapper::getCustomerResponseOfCustomer)
+                .map(customerMapper::getCustomerResponseOfCustomer)
                 .collect(Collectors.toList());
+
+        log.info("[GET_ALL_CUSTOMERS] Total de clientes devueltos: {}", responses.size());
         return ResponseEntity.ok(responses);
     }
 
@@ -91,9 +110,17 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<CustomerResponse> getCustomerById(String id) {
+        log.info("[GET_ALL_CUSTOMER_BY_ID] Solicitud para obtener cliente por ID={}", id);
+
         return customerService.findById(id)
-                .map(c -> ResponseEntity.ok(CustomerMapper.getCustomerResponseOfCustomer(c)))
-                .orElse(ResponseEntity.notFound().build());
+                .map(customer -> {
+                    log.info("[GET_ALL_CUSTOMER_BY_ID] Cliente encontrado con ID={}", id);
+                    return ResponseEntity.ok(customerMapper.getCustomerResponseOfCustomer(customer));
+                })
+                .orElseGet(() -> {
+                    log.warn("[GET_ALL_CUSTOMER_BY_ID] No se encontró cliente con ID={}", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     /**
@@ -108,11 +135,15 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<CustomerResponse> updateCustomer(String id, CustomerRequest customerRequest) {
-        Customer toUpdate = CustomerMapper.getCustomerofCustomerRequest(customerRequest);
+        log.info("[UPDATE_CUSTOMER] Solicitud de actualización para cliente ID={} con datos: {}", id, customerRequest);
+
+        Customer toUpdate = customerMapper.getCustomerofCustomerRequest(customerRequest);
         try {
             Customer updated = customerService.update(id, toUpdate);
-            return ResponseEntity.ok(CustomerMapper.getCustomerResponseOfCustomer(updated));
+            log.info("[UPDATE_CUSTOMER] Cliente actualizado con éxito. ID={}", updated.getId());
+            return ResponseEntity.ok(customerMapper.getCustomerResponseOfCustomer(updated));
         } catch (IllegalArgumentException ex) {
+            log.error("[UPDATE_CUSTOMER] Error al actualizar cliente ID={}: {}", id, ex.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -128,7 +159,12 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<List<String>> getCustomerProducts(String id) {
+        log.info("[GET_CUSTOMER_PRODUCTS] Solicitud para obtener productos de cliente ID={}", id);
+
         List<String> productIds = customerService.getProductIds(id);
+        log.info("[GET_CUSTOMER_PRODUCTS] Cliente ID={} tiene {} productos asociados", id, productIds.size());
+        log.debug("[GET_CUSTOMER_PRODUCTS] Lista de productos: {}", productIds);
+
         return ResponseEntity.ok(productIds);
     }
 
@@ -146,13 +182,18 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<Void> addProductToCustomer(String id, ProductIdRequest productIdRequest) {
+        log.info("[ADD_PRODUCTS_CUSTOMER] Solicitud para asociar producto a cliente ID={}. Request={}", id, productIdRequest);
+
         if (productIdRequest == null || productIdRequest.getProductId() == null || productIdRequest.getProductId().isBlank()) {
+            log.warn("[ADD_PRODUCTS_CUSTOMER] Request inválido para asociar producto a cliente ID={}: {}", id, productIdRequest);
             return ResponseEntity.badRequest().build();
         }
         try {
             customerService.addProduct(id, productIdRequest.getProductId());
+            log.info("[ADD_PRODUCTS_CUSTOMER] Producto {} agregado exitosamente al cliente ID={}", productIdRequest.getProductId(), id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
+            log.error("[ADD_PRODUCTS_CUSTOMER] Error al agregar producto {} a cliente ID={}: {}", productIdRequest.getProductId(), id, ex.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -169,10 +210,14 @@ public class CustomerApiDelegateImpl implements ApiApiDelegate {
      */
     @Override
     public ResponseEntity<Void> removeProductFromCustomer(String id, String productId) {
+        log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] Solicitud para eliminar producto {} del cliente ID={}", productId, id);
+
         try {
             customerService.removeProduct(id, productId);
+            log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] Producto {} eliminado del cliente ID={}", productId, id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
+            log.error("[REMOVE_PRODUCT_FROM_CUSTOMER] Error al eliminar producto {} del cliente ID={}: {}", productId, id, ex.getMessage());
             return ResponseEntity.notFound().build();
         }
     }

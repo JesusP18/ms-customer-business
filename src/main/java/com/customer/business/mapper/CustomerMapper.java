@@ -4,6 +4,7 @@ import com.customer.business.model.CustomerRequest;
 import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.entity.Customer;
 import lombok.NoArgsConstructor;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
  * - La entidad usa un campo String customerType para simplificar persistencia.
  */
 @NoArgsConstructor
+@Component
 public final class CustomerMapper {
 
     /**
@@ -30,7 +32,7 @@ public final class CustomerMapper {
      * @param request DTO recibido en la API
      * @return entidad Customer lista para ser persistida
      */
-    public static Customer getCustomerofCustomerRequest(CustomerRequest request) {
+    public Customer getCustomerofCustomerRequest(CustomerRequest request) {
         if (request == null) return null;
 
         Customer customer = new Customer();
@@ -66,7 +68,7 @@ public final class CustomerMapper {
      * @param customer entidad Customer proveniente de la BD
      * @return DTO CustomerResponse para enviar en la respuesta de la API
      */
-    public static CustomerResponse getCustomerResponseOfCustomer(Customer customer) {
+    public CustomerResponse getCustomerResponseOfCustomer(Customer customer) {
         if (customer == null) return null;
 
         CustomerResponse response = new CustomerResponse();

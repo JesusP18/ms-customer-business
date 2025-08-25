@@ -1,6 +1,7 @@
 openapi: 3.0.1
 info:
   title: Customer API
+  description: API para gestionar clientes y sus productos asociados
   version: 1.0.0
 servers:
   - url: http://localhost:8080
