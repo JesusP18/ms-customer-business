@@ -1,7 +1,10 @@
 package com.customer.business.service;
 
 import com.customer.business.model.entity.Customer;
+import com.customer.business.model.entity.Product;
 import com.customer.business.repository.CustomerRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,23 +15,23 @@ import java.util.Optional;
  */
 public interface CustomerService {
 
-    public List<Customer> findAll();
+    public Flux<Customer> findAll();
 
     /**
      * Busca un cliente por su identificador.
      *
-     * @param id identificador del cliente
+     * @param customerId identificador del cliente
      * @return Optional con el cliente si existe, vacío si no
      */
-    public Optional<Customer> findById(String id);
+    public Mono<Customer> findById(String customerId);
 
     /**
      * Crea un nuevo cliente en la base de datos.
      *
-     * @param c entidad del cliente a crear
+     * @param customer entidad del cliente a crear
      * @return cliente persistido
      */
-    public Customer create(Customer c);
+    public Mono<Customer> create(Customer customer);
 
     /**
      * Actualiza un cliente existente.
@@ -36,21 +39,27 @@ public interface CustomerService {
      * - Si el cliente no existe, lanza una excepción.
      * - El ID del cliente se fuerza para coincidir con el recibido en el parámetro.
      *
-     * @param id identificador del cliente
-     * @param c datos a actualizar
+     * @param customerId identificador del cliente
+     * @param customer datos a actualizar
      * @return cliente actualizado
      * @throws IllegalArgumentException si el cliente no existe
      */
-    public Customer update(String id, Customer c);
+    public Mono<Customer> update(String customerId, Customer customer);
 
     /**
      * Elimina un cliente de la base de datos.
      *
-     * @param id identificador del cliente a eliminar
+     * @param customerId identificador del cliente a eliminar
      */
-    public void delete(String id);
+    public Mono<Void> delete(String customerId);
 
-    public Customer addProduct(String customerId, String productId);
+    /**
+     * Agrega un producto a un cliente en específico
+     *
+     * @param customerId identificador del cliente a eliminar
+     * @param productId identificador del producto a eliminar
+     */
+    public Mono<Void> addProduct(String customerId, String productId);
 
     /**
      * Elimina un producto de la lista de productos de un cliente.
@@ -63,7 +72,7 @@ public interface CustomerService {
      * @return cliente con la lista de productos actualizada
      * @throws IllegalArgumentException si el cliente no existe
      */
-    public Customer removeProduct(String customerId, String productId);
+    public Mono<Void> removeProduct(String customerId, String productId);
 
     /**
      * Obtiene la lista de IDs de productos asociados a un cliente.
@@ -73,6 +82,5 @@ public interface CustomerService {
      * @param customerId identificador del cliente
      * @return lista de IDs de productos
      */
-    public List<String> getProductIds(String customerId);
-
+    public Flux<Product> getProductIds(String customerId);
 }

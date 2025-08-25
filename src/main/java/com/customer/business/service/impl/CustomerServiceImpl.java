@@ -1,10 +1,13 @@
 package com.customer.business.service.impl;
 
 import com.customer.business.model.entity.Customer;
+import com.customer.business.model.entity.Product;
 import com.customer.business.repository.CustomerRepository;
 import com.customer.business.service.CustomerService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,25 +30,25 @@ public class CustomerServiceImpl implements CustomerService {
      * @return lista de clientes
      */
     @Override
-    public List<Customer> findAll() { return repository.findAll(); }
+    public Flux<Customer> findAll() { return repository.findAll(); }
 
     /**
      * Busca un cliente por su identificador.
      *
-     * @param id identificador del cliente
+     * @param customerId identificador del cliente
      * @return Optional con el cliente si existe, vacío si no
      */
     @Override
-    public Optional<Customer> findById(String id) { return repository.findById(id); }
+    public Mono<Customer> findById(String customerId) { return repository.findById(customerId); }
 
     /**
      * Crea un nuevo cliente en la base de datos.
      *
-     * @param c entidad del cliente a crear
+     * @param customer entidad del cliente a crear
      * @return cliente persistido
      */
     @Override
-    public Customer create(Customer c) { return repository.save(c); }
+    public Mono<Customer> create(Customer customer) { return repository.save(customer); }
 
     /**
      * Actualiza un cliente existente.
@@ -53,25 +56,39 @@ public class CustomerServiceImpl implements CustomerService {
      * - Si el cliente no existe, lanza una excepción.
      * - El ID del cliente se fuerza para coincidir con el recibido en el parámetro.
      *
-     * @param id identificador del cliente
-     * @param c datos a actualizar
+     * @param customerId identificador del cliente
+     * @param customer datos a actualizar
      * @return cliente actualizado
      * @throws IllegalArgumentException si el cliente no existe
      */
     @Override
-    public Customer update(String id, Customer c) {
-        if (!repository.existsById(id)) throw new IllegalArgumentException("Customer not found with id: " + id);
-        c.setId(id);
-        return repository.save(c);
+    public Mono<Customer> update(String customerId, Customer customer) {
+        return repository.findById(customerId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Customer not found")))
+                .flatMap(existing -> {
+                    existing.setCustomerType(customer.getCustomerType());
+                    existing.setFirstName(customer.getFirstName());
+                    existing.setLastName(customer.getLastName());
+                    existing.setBusinessName(customer.getBusinessName());
+                    existing.setDni(customer.getDni());
+                    existing.setRuc(customer.getRuc());
+                    existing.setAddress(customer.getAddress());
+                    existing.setPhone(customer.getPhone());
+                    existing.setEmail(customer.getEmail());
+                    if (customer.getProducts() != null) {
+                        existing.setProducts(customer.getProducts());
+                    }
+                    return repository.save(existing);
+                });
     }
 
     /**
      * Elimina un cliente de la base de datos.
      *
-     * @param id identificador del cliente a eliminar
+     * @param customerId identificador del cliente a eliminar
      */
     @Override
-    public void delete(String id) { repository.deleteById(id); }
+    public Mono<Void> delete(String customerId) { return repository.deleteById(customerId); }
 
     /**
      * Agrega un producto a la lista de productos de un cliente.
@@ -86,15 +103,29 @@ public class CustomerServiceImpl implements CustomerService {
      * @throws IllegalArgumentException si el cliente no existe
      */
     @Override
-    public Customer addProduct(String customerId, String productId) {
-        Customer c = repository.findById(customerId)
-                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-        if (c.getProductIds() == null) c.setProductIds(new ArrayList<>());
-        if (!c.getProductIds().contains(productId)) {
-            c.getProductIds().add(productId);
-            repository.save(c);
-        }
-        return c;
+    public Mono<Void> addProduct(String customerId, String productId) {
+        return repository.findById(customerId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Customer not found")))
+                .flatMap(c -> {
+                    if (c.getProducts() == null) {
+                        c.setProducts(new ArrayList<>());
+                    }
+
+                    // Crear un nuevo objeto Product con el ID proporcionado
+                    Product newProduct = new Product();
+                    newProduct.setId(productId);
+
+                    // Evitar duplicados verificando si ya existe un producto con este ID
+                    boolean productExists = c.getProducts().stream()
+                            .anyMatch(p -> p.getId().equals(productId));
+
+                    if (!productExists) {
+                        c.getProducts().add(newProduct);
+                    }
+
+                    return repository.save(c);
+                })
+                .then(); // devuelve Mono<Void>
     }
 
     /**
@@ -109,13 +140,22 @@ public class CustomerServiceImpl implements CustomerService {
      * @throws IllegalArgumentException si el cliente no existe
      */
     @Override
-    public Customer removeProduct(String customerId, String productId) {
-        Customer c = repository.findById(customerId)
-                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-        if (c.getProductIds() != null && c.getProductIds().remove(productId)) {
-            repository.save(c);
-        }
-        return c;
+    public Mono<Void> removeProduct(String customerId, String productId) {
+        return repository.findById(customerId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Customer not found")))
+                .flatMap(customer -> {
+                    if (customer.getProducts() != null) {
+                        // Remover el producto que tenga el ID igual al productId proporcionado
+                        boolean removed = customer.getProducts().removeIf(product ->
+                                product.getId().equals(productId));
+
+                        if (removed) {
+                            return repository.save(customer);
+                        }
+                    }
+                    return Mono.just(customer);
+                })
+                .then();
     }
 
     /**
@@ -127,9 +167,15 @@ public class CustomerServiceImpl implements CustomerService {
      * @return lista de IDs de productos
      */
     @Override
-    public List<String> getProductIds(String customerId) {
+    public Flux<Product> getProductIds(String customerId) {
         return repository.findById(customerId)
-                .map(Customer::getProductIds)
-                .orElse(Collections.emptyList());
+                .flatMapMany(customer -> {
+                    if (customer.getProducts() != null) {
+                        return Flux.fromIterable(customer.getProducts());
+                    } else {
+                        return Flux.empty();
+                    }
+                })
+                .switchIfEmpty(Flux.empty());
     }
 }

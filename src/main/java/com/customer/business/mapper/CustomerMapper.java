@@ -2,18 +2,22 @@ package com.customer.business.mapper;
 
 import com.customer.business.model.CustomerRequest;
 import com.customer.business.model.CustomerResponse;
+import com.customer.business.model.ProductResponse;
 import com.customer.business.model.entity.Customer;
+import com.customer.business.model.entity.Product;
 import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Mapper entre:
  * - DTOs generados por OpenAPI: CustomerRequest, CustomerResponse
  * - Entidad de base de datos: Customer
  *
- * Nota: 
+ * Nota:
  * - CustomerRequest/Response vienen con enums internos CustomerTypeEnum (PERSONAL, EMPRESA).
  * - La entidad usa un campo String customerType para simplificar persistencia.
  */
@@ -22,7 +26,7 @@ import java.util.ArrayList;
 public final class CustomerMapper {
 
     /**
-     * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API) 
+     * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API)
      * en un objeto {@link Customer} (entidad de base de datos).
      *
      * - El campo "customerType" del request (enum) se transforma a String.
@@ -36,7 +40,6 @@ public final class CustomerMapper {
         if (request == null) return null;
 
         Customer customer = new Customer();
-
         customer.setId(null);
 
         if (request.getCustomerType() != null) {
@@ -53,7 +56,16 @@ public final class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
-        customer.setProductIds(request.getProductIds() == null ? new ArrayList<>() : new ArrayList<>(request.getProductIds()));
+
+        // Convertir List<ProductRequest> a List<Product>
+        List<Product> productList = new ArrayList<>();
+        if (request.getProducts() != null) {
+            productList = request.getProducts().stream()
+                    .map(productRequest -> new Product(productRequest.getId()))
+                    .collect(Collectors.toList());
+        }
+        customer.setProducts(productList);
+
         return customer;
     }
 
@@ -93,11 +105,19 @@ public final class CustomerMapper {
         response.setPhone(customer.getPhone());
         response.setEmail(customer.getEmail());
 
-        if (customer.getProductIds() != null) {
-            response.setProductIds(new ArrayList<>(customer.getProductIds()));
-        } else {
-            response.setProductIds(new ArrayList<>());
+        // Convertir List<Product> a List<ProductResponse>
+        List<ProductResponse> productResponses = new ArrayList<>();
+        if (customer.getProducts() != null) {
+            productResponses = customer.getProducts().stream()
+                    .map(product -> {
+                        ProductResponse productResponse = new ProductResponse();
+                        productResponse.setId(product.getId());
+                        return productResponse;
+                    })
+                    .collect(Collectors.toList());
         }
+        response.setProducts(productResponses);
+
         return response;
     }
 }
