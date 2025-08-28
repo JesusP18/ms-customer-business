@@ -26,7 +26,7 @@ import com.customer.business.model.entity.Product;
  */
 @NoArgsConstructor
 @Component
-public final class CustomerMapper {
+public class CustomerMapper {
     /**
      * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API)
      * en un objeto {@link Customer} (entidad de base de datos).
@@ -60,7 +60,11 @@ public final class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
-        customer.setProfile(request.getProfile().getValue()); // si añadiste profile en el request
+        if (request.getProfile() != null) {
+            customer.setProfile(request.getProfile().getValue());
+        } else {
+            customer.setProfile(null);
+        }
 
         // Convertir List<ProductRequest> a List<Product> usando el constructor de 4 args
         List<Product> productList = new ArrayList<>();
@@ -70,9 +74,9 @@ public final class CustomerMapper {
                             // usar el constructor completo (id, category, type, subType)
                             new Product(
                                     pr.getId(),
-                                    pr.getCategory() == null ? null : pr.getCategory().getValue(),
-                                    pr.getType() == null ? null : pr.getType().getValue(),
-                                    pr.getSubType() == null ? null : pr.getSubType().getValue()
+                                    pr.getCategory() == null ? null : pr.getCategory().name(),
+                                    pr.getType() == null ? null : pr.getType().name(),
+                                    pr.getSubType() == null ? null : pr.getSubType().name()
                             )
                     )
                     .collect(Collectors.toList());
@@ -120,8 +124,15 @@ public final class CustomerMapper {
         response.setAddress(customer.getAddress());
         response.setPhone(customer.getPhone());
         response.setEmail(customer.getEmail());
-        response.setProfile(customer.getProfile() == null ?
-                null : CustomerResponse.ProfileEnum.fromValue(customer.getProfile()));
+        if (customer.getProfile() != null) {
+            try {
+                response.setProfile(CustomerResponse.ProfileEnum.fromValue(customer.getProfile()));
+            } catch (IllegalArgumentException ex) {
+                response.setProfile(null);
+            }
+        } else {
+            response.setProfile(null);
+        }
 
         // Convertir List<Product> a List<ProductResponse>
         List<ProductResponse> productResponses = new ArrayList<>();
