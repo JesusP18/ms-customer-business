@@ -1,5 +1,6 @@
 package com.customer.business;
 
+import com.customer.business.model.entity.Product;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -128,31 +129,45 @@ public class CustomerApiImpl implements ApiApi {
 
     @Override
     public Mono<ResponseEntity<Void>> addProductToCustomer(String id,
-                                                           Mono<ProductRequest> productRequest,
+                                                           Mono<ProductRequest> productRequestMono,
                                                            ServerWebExchange exchange) {
-        log.info("[ADD_PRODUCT_TO_CUSTOMER] request id={}", id);
-
-        return productRequest
-                .flatMap(request -> {
-                    if (request == null || request.getId() == null || request.getId().isBlank()) {
-                        log.warn("[ADD_PRODUCT_TO_CUSTOMER] invalid request for id={}", id);
+        return productRequestMono
+                .flatMap(productRequest -> {
+                    // Validación básica del request
+                    if (productRequest == null ||
+                            productRequest.getId() == null ||
+                            productRequest.getId().isBlank()) {
                         return Mono.just(ResponseEntity.badRequest().<Void>build());
                     }
-                    return customerService.addProduct(id, request.getId())
-                            .then(Mono.fromSupplier(() -> {
-                                log.info("[ADD_PRODUCT_TO_CUSTOMER] added product={} to id={}",
-                                        request.getId(), id);
-                                return ResponseEntity.noContent().<Void>build();
-                            }))
-                            .onErrorResume(IllegalArgumentException.class, ex -> {
-                                log.warn("[ADD_PRODUCT_TO_CUSTOMER] customer not found id={}",
-                                        id);
-                                return Mono.just(ResponseEntity.notFound().build());
+
+                    // Mapear ProductRequest -> entidad Product (usa el constructor de 4 args)
+                    Product productEntity = new Product(
+                            productRequest.getId(),
+                            productRequest.getCategory().getValue(),
+                            productRequest.getType().getValue(),
+                            productRequest.getSubType().getValue()
+                    );
+
+                    // Llamar al service reactivo sin bloquear
+                    return customerService.addProduct(id, productEntity)
+                            .then(Mono.just(ResponseEntity.noContent().<Void>build()))
+                            .onErrorResume(ex -> {
+                                // Mapear errores de negocio a códigos HTTP
+                                if (ex instanceof IllegalArgumentException) {
+                                    String msg = ex.getMessage() == null ?
+                                            "" : ex.getMessage().toLowerCase();
+                                    if (msg.contains("not found")) {
+                                        return Mono.just(ResponseEntity.notFound().build());
+                                    }
+                                    return Mono.just(ResponseEntity.status(
+                                            HttpStatus.BAD_REQUEST).build());
+                                }
+                                // Para errores inesperados dejamos que el framework maneje el 5xx,
+                                // o puedes mapear a 500 explícitamente:
+                                return Mono.error(ex);
                             });
                 })
-                .switchIfEmpty(Mono.just(ResponseEntity.badRequest().build()))
-                .doOnError(error -> log.error("[ADD_PRODUCT_TO_CUSTOMER] error id={}",
-                        id, error));
+                .switchIfEmpty(Mono.just(ResponseEntity.badRequest().<Void>build()));
     }
 
     @Override

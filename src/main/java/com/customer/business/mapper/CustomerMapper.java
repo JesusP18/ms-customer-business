@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.customer.business.model.ProductRequest;
 import lombok.NoArgsConstructor;
 
 import org.springframework.stereotype.Component;
@@ -59,12 +60,21 @@ public final class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
+        customer.setProfile(request.getProfile().getValue()); // si añadiste profile en el request
 
-        // Convertir List<ProductRequest> a List<Product>
+        // Convertir List<ProductRequest> a List<Product> usando el constructor de 4 args
         List<Product> productList = new ArrayList<>();
         if (request.getProducts() != null) {
             productList = request.getProducts().stream()
-                    .map(productRequest -> new Product(productRequest.getId()))
+                    .map((ProductRequest pr) ->
+                            // usar el constructor completo (id, category, type, subType)
+                            new Product(
+                                    pr.getId(),
+                                    pr.getCategory() == null ? null : pr.getCategory().getValue(),
+                                    pr.getType() == null ? null : pr.getType().getValue(),
+                                    pr.getSubType() == null ? null : pr.getSubType().getValue()
+                            )
+                    )
                     .collect(Collectors.toList());
         }
         customer.setProducts(productList);
@@ -110,14 +120,25 @@ public final class CustomerMapper {
         response.setAddress(customer.getAddress());
         response.setPhone(customer.getPhone());
         response.setEmail(customer.getEmail());
+        response.setProfile(customer.getProfile() == null ?
+                null : CustomerResponse.ProfileEnum.fromValue(customer.getProfile()));
 
         // Convertir List<Product> a List<ProductResponse>
         List<ProductResponse> productResponses = new ArrayList<>();
         if (customer.getProducts() != null) {
             productResponses = customer.getProducts().stream()
-                    .map(product -> {
+                    .map((Product product) -> {
                         ProductResponse productResponse = new ProductResponse();
                         productResponse.setId(product.getId());
+                        // mapear campos si existen en el DTO generado
+                        try {
+                            productResponse.setCategory(
+                                    ProductResponse.CategoryEnum.valueOf(product.getCategory()));
+                            productResponse.setType(
+                                    ProductResponse.TypeEnum.valueOf(product.getType()));
+                            productResponse.setSubType(
+                                    ProductResponse.SubTypeEnum.valueOf(product.getSubType()));
+                        } catch (Exception ignored) { }
                         return productResponse;
                     })
                     .collect(Collectors.toList());

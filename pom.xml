@@ -123,6 +123,8 @@
 				<version>6.6.0</version>
 				<executions>
 					<execution>
+						<id>generate-openapi-sources</id>
+						<phase>generate-sources</phase> <!-- importante -->
 						<goals>
 							<goal>generate</goal>
 						</goals>

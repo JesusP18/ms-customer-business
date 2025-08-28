@@ -53,10 +53,10 @@ public interface CustomerService {
     /**
      * Agrega un producto a un cliente en específico
      *
-     * @param customerId identificador del cliente a eliminar
-     * @param productId identificador del producto a eliminar
+     * @param customerId identificador del cliente
+     * @param product identificador del producto a agregar
      */
-    public Mono<Void> addProduct(String customerId, String productId);
+    public Mono<Void> addProduct(String customerId, Product product);
 
     /**
      * Elimina un producto de la lista de productos de un cliente.

@@ -36,7 +36,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8081/api/customers/68a0bcf8db876056afd218b0",
+							"raw": "http://localhost:8081/api/customers/68afed8424611f4ae81e02bd",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -45,7 +45,7 @@
 							"path": [
 								"api",
 								"customers",
-								"68a0bcf8db876056afd218b0"
+								"68afed8424611f4ae81e02bd"
 							]
 						}
 					},
@@ -58,7 +58,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"customerType\": \"PERSONAL\",\r\n    \"firstName\": \"Juan 2\",\r\n    \"lastName\": \"Pérez 2\",\r\n    \"businessName\": \"test\",\r\n    \"dni\": \"88884444\",\r\n    \"ruc\": \"2098181511\",\r\n    \"address\": \"Av. Libertad 123, Lima 2\",\r\n    \"phone\": \"+51 987444111\",\r\n    \"email\": \"juan.perez2@example.com\",\r\n    \"products\": [\"1\", \"2\", \"3\"]\r\n}",
+							"raw": "{\r\n    \"customerType\": \"PERSONAL\",\r\n    \"profile\": \"VIP\",\r\n    \"firstName\": \"Juan 2\",\r\n    \"lastName\": \"Pérez 2\",\r\n    \"businessName\": \"test\",\r\n    \"dni\": \"88884444\",\r\n    \"ruc\": \"2098181511\",\r\n    \"address\": \"Av. Libertad 123, Lima 2\",\r\n    \"phone\": \"+51 987444111\",\r\n    \"email\": \"juan.perez2@example.com\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -167,7 +167,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"id\": \"3\"\r\n}",
+							"raw": "{\r\n  \"id\": \"L1\",\r\n  \"category\": \"LIABILITY\",\r\n  \"type\": \"LOAN\",\r\n  \"subType\": \"PERSONAL_LOAN\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -175,7 +175,7 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:8081/api/customers/68a0bcf8db876056afd218b0/products",
+							"raw": "http://localhost:8081/api/customers/68afed8424611f4ae81e02bd/products",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -184,7 +184,7 @@
 							"path": [
 								"api",
 								"customers",
-								"68a0bcf8db876056afd218b0",
+								"68afed8424611f4ae81e02bd",
 								"products"
 							]
 						}

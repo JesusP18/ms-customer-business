@@ -154,6 +154,10 @@ components:
         customerType:
           type: string
           enum: [PERSONAL, EMPRESA]
+        profile:
+          type: string
+          enum: [STANDARD, VIP, PYME]
+          description: Perfil del cliente, por defecto STANDARD.
         firstName:
           type: string
         lastName:
@@ -183,6 +187,9 @@ components:
         customerType:
           type: string
           enum: [PERSONAL, EMPRESA]
+        profile:
+          type: string
+          enum: [STANDARD, VIP, PYME]
         firstName:
           type: string
         lastName:
@@ -208,15 +215,35 @@ components:
       type: object
       required:
         - id
+        - type
+        - subType
       properties:
         id:
           type: string
+        category:
+          type: string
+          enum: [LIABILITY, ASSET]
+        type:
+          type: string
+          enum: [ACCOUNT, LOAN, CREDIT_CARD]
+        subType:
+          type: string
+          enum: [SAVINGS, CURRENT, FIXED_TERM, PERSONAL_LOAN, BUSINESS_LOAN, CREDIT_CARD]
 
     ProductResponse:
       type: object
       properties:
         id:
           type: string
+        category:
+          type: string
+          enum: [LIABILITY, ASSET]
+        type:
+          type: string
+          enum: [ACCOUNT, LOAN, CREDIT_CARD]
+        subType:
+          type: string
+          enum: [SAVINGS, CURRENT, FIXED_TERM, PERSONAL_LOAN, BUSINESS_LOAN, CREDIT_CARD]
 
     ProductIdRequest:
       type: object
