@@ -6,9 +6,6 @@ import com.customer.business.repository.CustomerRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Optional;
-
 /**
  * Servicio que encapsula la lógica de negocio relacionada con los clientes.
  * Se comunica con el repositorio {@link CustomerRepository} para persistencia en MongoDB.

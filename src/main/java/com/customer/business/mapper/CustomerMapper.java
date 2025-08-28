@@ -1,16 +1,18 @@
 package com.customer.business.mapper;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import lombok.NoArgsConstructor;
+
+import org.springframework.stereotype.Component;
+
 import com.customer.business.model.CustomerRequest;
 import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.ProductResponse;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
-import lombok.NoArgsConstructor;
-import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Mapper entre:
@@ -24,7 +26,6 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Component
 public final class CustomerMapper {
-
     /**
      * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API)
      * en un objeto {@link Customer} (entidad de base de datos).
@@ -37,7 +38,9 @@ public final class CustomerMapper {
      * @return entidad Customer lista para ser persistida
      */
     public Customer getCustomerofCustomerRequest(CustomerRequest request) {
-        if (request == null) return null;
+        if (request == null) {
+            return null;
+        }
 
         Customer customer = new Customer();
         customer.setId(null);
@@ -81,14 +84,17 @@ public final class CustomerMapper {
      * @return DTO CustomerResponse para enviar en la respuesta de la API
      */
     public CustomerResponse getCustomerResponseOfCustomer(Customer customer) {
-        if (customer == null) return null;
+        if (customer == null) {
+            return null;
+        }
 
         CustomerResponse response = new CustomerResponse();
         response.setId(customer.getId());
 
         if (customer.getCustomerType() != null) {
             try {
-                response.setCustomerType(CustomerResponse.CustomerTypeEnum.fromValue(customer.getCustomerType()));
+                response.setCustomerType(CustomerResponse.CustomerTypeEnum
+                        .fromValue(customer.getCustomerType()));
             } catch (IllegalArgumentException ex) {
                 response.setCustomerType(null);
             }

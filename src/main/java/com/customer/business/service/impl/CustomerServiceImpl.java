@@ -1,18 +1,14 @@
 package com.customer.business.service.impl;
 
+import java.util.ArrayList;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
 import com.customer.business.repository.CustomerRepository;
 import com.customer.business.service.CustomerService;
-import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Servicio que encapsula la lógica de negocio relacionada con los clientes.
@@ -30,16 +26,19 @@ public class CustomerServiceImpl implements CustomerService {
      * @return lista de clientes
      */
     @Override
-    public Flux<Customer> findAll() { return repository.findAll(); }
+    public Flux<Customer> findAll() {
+        return repository.findAll();
+    }
 
     /**
      * Busca un cliente por su identificador.
-     *
      * @param customerId identificador del cliente
      * @return Optional con el cliente si existe, vacío si no
      */
     @Override
-    public Mono<Customer> findById(String customerId) { return repository.findById(customerId); }
+    public Mono<Customer> findById(String customerId) {
+        return repository.findById(customerId);
+    }
 
     /**
      * Crea un nuevo cliente en la base de datos.
@@ -48,11 +47,12 @@ public class CustomerServiceImpl implements CustomerService {
      * @return cliente persistido
      */
     @Override
-    public Mono<Customer> create(Customer customer) { return repository.save(customer); }
+    public Mono<Customer> create(Customer customer) {
+        return repository.save(customer);
+    }
 
     /**
-     * Actualiza un cliente existente.
-     *
+     * * Actualiza un cliente existente.
      * - Si el cliente no existe, lanza una excepción.
      * - El ID del cliente se fuerza para coincidir con el recibido en el parámetro.
      *
@@ -69,7 +69,7 @@ public class CustomerServiceImpl implements CustomerService {
                     existing.setCustomerType(customer.getCustomerType());
                     existing.setFirstName(customer.getFirstName());
                     existing.setLastName(customer.getLastName());
-                    existing.setBusinessName(customer.getBusinessName());
+                    existing.setBusinessName( customer.getBusinessName());
                     existing.setDni(customer.getDni());
                     existing.setRuc(customer.getRuc());
                     existing.setAddress(customer.getAddress());
@@ -88,7 +88,9 @@ public class CustomerServiceImpl implements CustomerService {
      * @param customerId identificador del cliente a eliminar
      */
     @Override
-    public Mono<Void> delete(String customerId) { return repository.deleteById(customerId); }
+    public Mono<Void> delete(String customerId) {
+        return repository.deleteById(customerId);
+    }
 
     /**
      * Agrega un producto a la lista de productos de un cliente.

@@ -1,22 +1,24 @@
 package com.customer.business;
 
-import com.customer.business.api.ApiApi;
-import com.customer.business.mapper.CustomerMapper;
-import com.customer.business.model.*;
-import com.customer.business.model.entity.Product;
-import com.customer.business.service.CustomerService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
+import com.customer.business.api.ApiApi;
+import com.customer.business.mapper.CustomerMapper;
+import com.customer.business.model.CustomerRequest;
+import com.customer.business.model.CustomerResponse;
+import com.customer.business.model.ProductRequest;
+import com.customer.business.model.ProductResponse;
+import com.customer.business.service.CustomerService;
 
 /**
  * Implementación de {@link ApiApi} para la API de clientes en modo reactivo (WebFlux).
@@ -28,11 +30,12 @@ import java.util.List;
 public class CustomerApiImpl implements ApiApi {
 
     private final CustomerService customerService;
+
     private final CustomerMapper customerMapper;
 
     @Override
-    public Mono<ResponseEntity<CustomerResponse>> createCustomer(Mono<CustomerRequest> customerRequest,
-                                                                 ServerWebExchange exchange) {
+    public Mono<ResponseEntity<CustomerResponse>> createCustomer(
+            Mono<CustomerRequest> customerRequest, ServerWebExchange exchange) {
         log.info("[CREATE_CUSTOMER] request received");
         return customerRequest
                 .map(customerMapper::getCustomerofCustomerRequest)
@@ -46,7 +49,8 @@ public class CustomerApiImpl implements ApiApi {
     }
 
     @Override
-    public Mono<ResponseEntity<Void>> deleteCustomer(String customerId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Void>> deleteCustomer(String customerId,
+                                                     ServerWebExchange exchange) {
         log.info("[DELETE_CUSTOMER] request id={}", customerId);
         return customerService.findById(customerId)
                 .flatMap(c ->
@@ -64,7 +68,8 @@ public class CustomerApiImpl implements ApiApi {
     }
 
     @Override
-    public Mono<ResponseEntity<Flux<CustomerResponse>>> getAllCustomers(ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Flux<CustomerResponse>>> getAllCustomers(
+            ServerWebExchange exchange) {
         log.info("[GET_ALL_CUSTOMERS] request");
         Flux<CustomerResponse> body = customerService.findAll()
                 .map(customerMapper::getCustomerResponseOfCustomer);
@@ -72,7 +77,8 @@ public class CustomerApiImpl implements ApiApi {
     }
 
     @Override
-    public Mono<ResponseEntity<CustomerResponse>> getCustomerById(String customerId, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<CustomerResponse>> getCustomerById(String customerId,
+                                                                  ServerWebExchange exchange) {
         log.info("[GET_CUSTOMER_BY_ID] request id={}", customerId);
         return customerService.findById(customerId)
                 .map(customerMapper::getCustomerResponseOfCustomer)
@@ -81,13 +87,15 @@ public class CustomerApiImpl implements ApiApi {
                     log.warn("[GET_CUSTOMER_BY_ID] not found id={}", customerId);
                     return ResponseEntity.notFound().build();
                 }))
-                .doOnError(e -> log.error("[GET_CUSTOMER_BY_ID] error id={}", customerId, e));
+                .doOnError(error -> log.error("[GET_CUSTOMER_BY_ID] error id={}",
+                        customerId, error));
     }
 
     @Override
-    public Mono<ResponseEntity<CustomerResponse>> updateCustomer(String customerId,
-                                                                 Mono<CustomerRequest> customerRequest,
-                                                                 ServerWebExchange exchange) {
+    public Mono<ResponseEntity<CustomerResponse>> updateCustomer(
+                                                      String customerId,
+                                                      Mono<CustomerRequest> customerRequest,
+                                                      ServerWebExchange exchange) {
         log.info("[UPDATE_CUSTOMER] request id={}", customerId);
         return customerRequest
                 .map(customerMapper::getCustomerofCustomerRequest)
@@ -98,11 +106,14 @@ public class CustomerApiImpl implements ApiApi {
                     log.warn("[UPDATE_CUSTOMER] not found id={}", customerId);
                     return Mono.just(ResponseEntity.notFound().build());
                 })
-                .doOnError(error -> log.error("[UPDATE_CUSTOMER] error id={}", customerId, error));
+                .doOnError(error -> log.error("[UPDATE_CUSTOMER] error id={}",
+                        customerId, error));
     }
 
     @Override
-    public Mono<ResponseEntity<Flux<ProductResponse>>> getCustomerProducts(String id, ServerWebExchange exchange) {
+    public Mono<ResponseEntity<Flux<ProductResponse>>> getCustomerProducts(
+                                                                String id,
+                                                                ServerWebExchange exchange) {
         log.info("[GET_CUSTOMER_PRODUCTS] request id={}", id);
 
         Flux<ProductResponse> productResponses = customerService.getProductIds(id)
@@ -129,32 +140,39 @@ public class CustomerApiImpl implements ApiApi {
                     }
                     return customerService.addProduct(id, request.getId())
                             .then(Mono.fromSupplier(() -> {
-                                log.info("[ADD_PRODUCT_TO_CUSTOMER] added product={} to id={}", request.getId(), id);
+                                log.info("[ADD_PRODUCT_TO_CUSTOMER] added product={} to id={}",
+                                        request.getId(), id);
                                 return ResponseEntity.noContent().<Void>build();
                             }))
                             .onErrorResume(IllegalArgumentException.class, ex -> {
-                                log.warn("[ADD_PRODUCT_TO_CUSTOMER] customer not found id={}", id);
+                                log.warn("[ADD_PRODUCT_TO_CUSTOMER] customer not found id={}",
+                                        id);
                                 return Mono.just(ResponseEntity.notFound().build());
                             });
                 })
                 .switchIfEmpty(Mono.just(ResponseEntity.badRequest().build()))
-                .doOnError(error -> log.error("[ADD_PRODUCT_TO_CUSTOMER] error id={}", id, error));
+                .doOnError(error -> log.error("[ADD_PRODUCT_TO_CUSTOMER] error id={}",
+                        id, error));
     }
 
     @Override
     public Mono<ResponseEntity<Void>> removeProductFromCustomer(String customerId,
                                                                 String productId,
                                                                 ServerWebExchange exchange) {
-        log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] request id={}, productId={}", customerId, productId);
+        log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] request id={}, productId={}",
+                customerId, productId);
         return customerService.removeProduct(customerId, productId)
                 .then(Mono.fromSupplier(() -> {
-                    log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] removed product={} from id={}", productId, customerId);
+                    log.info("[REMOVE_PRODUCT_FROM_CUSTOMER] removed product={} from id={}",
+                            productId, customerId);
                     return ResponseEntity.noContent().<Void>build();
                 }))
                 .onErrorResume(IllegalArgumentException.class, ex -> {
                     log.warn("[REMOVE_PRODUCT_FROM_CUSTOMER] not found id={}", customerId);
                     return Mono.just(ResponseEntity.notFound().build());
                 })
-                .doOnError(e -> log.error("[REMOVE_PRODUCT_FROM_CUSTOMER] error id={}, productId={}", customerId, productId, e));
+                .doOnError(error ->
+                        log.error("[REMOVE_PRODUCT_FROM_CUSTOMER] error id={}, productId={}",
+                                customerId, productId, error));
     }
 }
