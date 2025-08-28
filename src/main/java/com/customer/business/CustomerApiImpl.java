@@ -121,6 +121,15 @@ public class CustomerApiImpl implements ApiApi {
                 .map(product -> {
                     ProductResponse response = new ProductResponse();
                     response.setId(product.getId());
+                    response.setCategory(
+                            ProductResponse.CategoryEnum.fromValue(
+                                    product.getCategory()));
+                    response.setType(
+                            ProductResponse.TypeEnum.fromValue(
+                                    product.getType()));
+                    response.setSubType(
+                            ProductResponse.SubTypeEnum.fromValue(
+                                    product.getSubType()));
                     return response;
                 });
 
