@@ -1,4 +1,4 @@
-package com.customer.business.model.entity;
+package com.customer.business.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,7 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Product {
+public class ProductDTO {
+
+    private String id;
 
     private String customerId;
 

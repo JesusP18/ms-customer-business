@@ -1,6 +1,16 @@
 package com.customer.business;
 
+import com.customer.business.exception.ResourceNotFoundException;
+import com.customer.business.exception.ValidationException;
+import com.customer.business.model.CustomerCreateRequest;
+import com.customer.business.model.CustomerResponse;
+import com.customer.business.model.CustomerUpdateRequest;
+import com.customer.business.model.ProductRequest;
+import com.customer.business.model.ProductResponse;
+import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
+import com.customer.business.validator.CreateCustomerValidator;
+import com.customer.business.validator.UpdateCustomerValidator;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,10 +25,6 @@ import reactor.core.publisher.Mono;
 
 import com.customer.business.api.ApiApi;
 import com.customer.business.mapper.CustomerMapper;
-import com.customer.business.model.CustomerRequest;
-import com.customer.business.model.CustomerResponse;
-import com.customer.business.model.ProductRequest;
-import com.customer.business.model.ProductResponse;
 import com.customer.business.service.CustomerService;
 
 /**
@@ -34,17 +40,26 @@ public class CustomerApiImpl implements ApiApi {
 
     private final CustomerMapper customerMapper;
 
+    private final UpdateCustomerValidator updateValidator;
+
+    private final CreateCustomerValidator createValidator;
+
     @Override
     public Mono<ResponseEntity<CustomerResponse>> createCustomer(
-            Mono<CustomerRequest> customerRequest, ServerWebExchange exchange) {
+            Mono<CustomerCreateRequest> customerRequest, ServerWebExchange exchange) {
         log.info("[CREATE_CUSTOMER] request received");
         return customerRequest
-                .map(customerMapper::getCustomerofCustomerRequest)
-                .flatMap(customerService::create) // Mono<Customer>
+                .doOnNext(createValidator::validate) // Validar la solicitud
+                .map(customerMapper::getCustomerofCustomerCreateRequest)
+                .flatMap(customerService::create)
                 .map(customerMapper::getCustomerResponseOfCustomer)
                 .map(resp -> {
                     log.info("[CREATE_CUSTOMER] created id={}", resp.getId());
                     return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+                })
+                .onErrorResume(ValidationException.class, ex -> {
+                    log.warn("[CREATE_CUSTOMER] validation failed: {}", ex.getMessage());
+                    return Mono.error(new ValidationException(ex.getMessage()));
                 })
                 .doOnError(e -> log.error("[CREATE_CUSTOMER] error creating customer", e));
     }
@@ -94,18 +109,28 @@ public class CustomerApiImpl implements ApiApi {
 
     @Override
     public Mono<ResponseEntity<CustomerResponse>> updateCustomer(
-                                                      String customerId,
-                                                      Mono<CustomerRequest> customerRequest,
-                                                      ServerWebExchange exchange) {
+            String customerId,
+            Mono<CustomerUpdateRequest> customerRequest,
+            ServerWebExchange exchange) {
         log.info("[UPDATE_CUSTOMER] request id={}", customerId);
         return customerRequest
-                .map(customerMapper::getCustomerofCustomerRequest)
-                .flatMap(request -> customerService.update(customerId, request))
+                .doOnNext(updateValidator::validate) // Validar la solicitud
+                .flatMap(request -> customerService.findById(customerId)
+                        .flatMap(existing -> {
+                            Customer updated = customerMapper
+                                    .getCustomerFromUpdateRequest(request, existing);
+                            return customerService.update(customerId, updated);
+                        }))
                 .map(customerMapper::getCustomerResponseOfCustomer)
                 .map(ResponseEntity::ok)
-                .onErrorResume(IllegalArgumentException.class, ex -> {
+                .onErrorResume(ValidationException.class, ex -> {
+                    log.warn("[UPDATE_CUSTOMER] validation failed id={}: {}",
+                            customerId, ex.getMessage());
+                    return Mono.error(new ValidationException(ex.getMessage()));
+                })
+                .onErrorResume(ResourceNotFoundException.class, ex -> {
                     log.warn("[UPDATE_CUSTOMER] not found id={}", customerId);
-                    return Mono.just(ResponseEntity.notFound().build());
+                    return Mono.error(new ResourceNotFoundException("Customer", customerId));
                 })
                 .doOnError(error -> log.error("[UPDATE_CUSTOMER] error id={}",
                         customerId, error));
@@ -113,14 +138,12 @@ public class CustomerApiImpl implements ApiApi {
 
     @Override
     public Mono<ResponseEntity<Flux<ProductResponse>>> getCustomerProducts(
-                                                                String id,
-                                                                ServerWebExchange exchange) {
+            String id, ServerWebExchange exchange) {
         log.info("[GET_CUSTOMER_PRODUCTS] request id={}", id);
 
-        Flux<ProductResponse> productResponses = customerService.getProductIds(id)
+        Flux<ProductResponse> productResponses = customerService.getProducts(id)
                 .map(product -> {
                     ProductResponse response = new ProductResponse();
-                    response.setId(product.getId());
                     response.setCategory(
                             ProductResponse.CategoryEnum.fromValue(
                                     product.getCategory()));
@@ -140,18 +163,13 @@ public class CustomerApiImpl implements ApiApi {
     public Mono<ResponseEntity<Void>> addProductToCustomer(String id,
                                                            Mono<ProductRequest> productRequestMono,
                                                            ServerWebExchange exchange) {
+        log.info("[ADD_PRODUCT_TO_CUSTOMER] request received for customer id={}", id);
         return productRequestMono
                 .flatMap(productRequest -> {
-                    // Validación básica del request
-                    if (productRequest == null ||
-                            productRequest.getId() == null ||
-                            productRequest.getId().isBlank()) {
-                        return Mono.just(ResponseEntity.badRequest().<Void>build());
-                    }
 
                     // Mapear ProductRequest -> entidad Product (usa el constructor de 4 args)
                     Product productEntity = new Product(
-                            productRequest.getId(),
+                            productRequest.getCustomerId(),
                             productRequest.getCategory().getValue(),
                             productRequest.getType().getValue(),
                             productRequest.getSubType().getValue()
@@ -159,24 +177,44 @@ public class CustomerApiImpl implements ApiApi {
 
                     // Llamar al service reactivo sin bloquear
                     return customerService.addProduct(id, productEntity)
-                            .then(Mono.just(ResponseEntity.noContent().<Void>build()))
+                            .then(Mono.fromSupplier(() -> {
+                                log.info(
+                                        "[ADD_PRODUCT_TO_CUSTOMER] product added " +
+                                                "successfully for customer id={}, product id={}",
+                                        id, productRequest);
+                                return ResponseEntity.noContent().<Void>build();
+                            }))
                             .onErrorResume(ex -> {
-                                // Mapear errores de negocio a códigos HTTP
+                                // Map business rule violations to appropriate HTTP status codes
                                 if (ex instanceof IllegalArgumentException) {
                                     String msg = ex.getMessage() == null ?
                                             "" : ex.getMessage().toLowerCase();
+                                    log.warn(
+                                            "[ADD_PRODUCT_TO_CUSTOMER] " +
+                                                    "business rule " +
+                                                    "violation for customer id={}: {}",
+                                            id, ex.getMessage());
+
                                     if (msg.contains("not found")) {
                                         return Mono.just(ResponseEntity.notFound().build());
                                     }
                                     return Mono.just(ResponseEntity.status(
                                             HttpStatus.BAD_REQUEST).build());
                                 }
-                                // Para errores inesperados dejamos que el framework maneje el 5xx,
-                                // o puedes mapear a 500 explícitamente:
+                                log.error(
+                                        "[ADD_PRODUCT_TO_CUSTOMER]" +
+                                                " unexpected error for customer id={}", id, ex);
                                 return Mono.error(ex);
                             });
                 })
-                .switchIfEmpty(Mono.just(ResponseEntity.badRequest().<Void>build()));
+                .switchIfEmpty(Mono.fromSupplier(() -> {
+                    log.warn("[ADD_PRODUCT_TO_CUSTOMER]" +
+                            " empty request body for customer id={}", id);
+                    return ResponseEntity.badRequest().<Void>build();
+                }))
+                .doOnError(error ->
+                        log.error("[ADD_PRODUCT_TO_CUSTOMER]" +
+                                " processing error for customer id={}", id, error));
     }
 
     @Override

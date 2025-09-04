@@ -28,7 +28,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/CustomerCreateRequest'
       responses:
         '201':
           description: Cliente creado
@@ -68,7 +68,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/CustomerUpdateRequest'
       responses:
         '200':
           description: Cliente actualizado
@@ -145,15 +145,12 @@ paths:
           description: Producto eliminado del cliente
 components:
   schemas:
-    CustomerRequest:
+    CustomerCreateRequest:
       type: object
-      required:
-        - customerType
-        - firstName
       properties:
         customerType:
           type: string
-          enum: [PERSONAL, EMPRESA]
+          enum: [PERSONAL, BUSINESS]
         profile:
           type: string
           enum: [STANDARD, VIP, PYME]
@@ -174,10 +171,6 @@ components:
           type: string
         email:
           type: string
-        products:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProductRequest'
 
     CustomerResponse:
       type: object
@@ -186,7 +179,7 @@ components:
           type: string
         customerType:
           type: string
-          enum: [PERSONAL, EMPRESA]
+          enum: [PERSONAL, BUSINESS]
         profile:
           type: string
           enum: [STANDARD, VIP, PYME]
@@ -206,19 +199,27 @@ components:
           type: string
         email:
           type: string
-        products:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProductResponse'
+
+    CustomerUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        businessName:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
 
     ProductRequest:
       type: object
-      required:
-        - id
-        - type
-        - subType
       properties:
-        id:
+        customerId:
           type: string
         category:
           type: string
@@ -234,6 +235,8 @@ components:
       type: object
       properties:
         id:
+          type: string
+        customerId:
           type: string
         category:
           type: string

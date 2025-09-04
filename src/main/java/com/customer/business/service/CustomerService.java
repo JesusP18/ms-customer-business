@@ -79,5 +79,5 @@ public interface CustomerService {
      * @param customerId identificador del cliente
      * @return lista de IDs de productos
      */
-    public Flux<Product> getProductIds(String customerId);
+    public Flux<Product> getProducts(String customerId);
 }
