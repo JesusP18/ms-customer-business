@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: ms-customer-business
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/customer_business
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,threaddump
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 50
+        minimumNumberOfCalls: 10
+        permittedNumberOfCallsInHalfOpenState: 5
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+    instances:
+      productService:
+        baseConfig: default
+
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 2s
+    instances:
+      productService:
+        baseConfig: default

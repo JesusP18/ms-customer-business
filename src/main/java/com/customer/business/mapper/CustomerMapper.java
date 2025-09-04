@@ -1,19 +1,15 @@
 package com.customer.business.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.customer.business.model.ProductRequest;
+import com.customer.business.model.CustomerCreateRequest;
+import com.customer.business.model.CustomerResponse;
+import com.customer.business.model.CustomerUpdateRequest;
+import com.customer.business.model.PaymentResponse;
+import com.customer.business.model.ProductReportResponse;
 import lombok.NoArgsConstructor;
 
 import org.springframework.stereotype.Component;
 
-import com.customer.business.model.CustomerRequest;
-import com.customer.business.model.CustomerResponse;
-import com.customer.business.model.ProductResponse;
 import com.customer.business.model.entity.Customer;
-import com.customer.business.model.entity.Product;
 
 /**
  * Mapper entre:
@@ -28,7 +24,7 @@ import com.customer.business.model.entity.Product;
 @Component
 public class CustomerMapper {
     /**
-     * Convierte un objeto {@link CustomerRequest} (DTO recibido en la API)
+     * Convierte un objeto {@link CustomerCreateRequest} (DTO recibido en la API)
      * en un objeto {@link Customer} (entidad de base de datos).
      *
      * - El campo "customerType" del request (enum) se transforma a String.
@@ -38,7 +34,7 @@ public class CustomerMapper {
      * @param request DTO recibido en la API
      * @return entidad Customer lista para ser persistida
      */
-    public Customer getCustomerofCustomerRequest(CustomerRequest request) {
+    public Customer getCustomerofCustomerCreateRequest(CustomerCreateRequest request) {
         if (request == null) {
             return null;
         }
@@ -47,9 +43,14 @@ public class CustomerMapper {
         customer.setId(null);
 
         if (request.getCustomerType() != null) {
-            customer.setCustomerType(request.getCustomerType().toString());
+            customer.setCustomerType(request.getCustomerType().getValue());
         } else {
             customer.setCustomerType(null);
+        }
+        if (request.getProfile() != null) {
+            customer.setProfile(request.getProfile().getValue());
+        } else {
+            customer.setProfile(null);
         }
 
         customer.setFirstName(request.getFirstName());
@@ -60,28 +61,6 @@ public class CustomerMapper {
         customer.setAddress(request.getAddress());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
-        if (request.getProfile() != null) {
-            customer.setProfile(request.getProfile().getValue());
-        } else {
-            customer.setProfile(null);
-        }
-
-        // Convertir List<ProductRequest> a List<Product> usando el constructor de 4 args
-        List<Product> productList = new ArrayList<>();
-        if (request.getProducts() != null) {
-            productList = request.getProducts().stream()
-                    .map((ProductRequest pr) ->
-                            // usar el constructor completo (id, category, type, subType)
-                            new Product(
-                                    pr.getId(),
-                                    pr.getCategory() == null ? null : pr.getCategory().name(),
-                                    pr.getType() == null ? null : pr.getType().name(),
-                                    pr.getSubType() == null ? null : pr.getSubType().name()
-                            )
-                    )
-                    .collect(Collectors.toList());
-        }
-        customer.setProducts(productList);
 
         return customer;
     }
@@ -133,29 +112,47 @@ public class CustomerMapper {
         } else {
             response.setProfile(null);
         }
-
-        // Convertir List<Product> a List<ProductResponse>
-        List<ProductResponse> productResponses = new ArrayList<>();
-        if (customer.getProducts() != null) {
-            productResponses = customer.getProducts().stream()
-                    .map((Product product) -> {
-                        ProductResponse productResponse = new ProductResponse();
-                        productResponse.setId(product.getId());
-                        // mapear campos si existen en el DTO generado
-                        try {
-                            productResponse.setCategory(
-                                    ProductResponse.CategoryEnum.valueOf(product.getCategory()));
-                            productResponse.setType(
-                                    ProductResponse.TypeEnum.valueOf(product.getType()));
-                            productResponse.setSubType(
-                                    ProductResponse.SubTypeEnum.valueOf(product.getSubType()));
-                        } catch (Exception ignored) { }
-                        return productResponse;
-                    })
-                    .collect(Collectors.toList());
-        }
-        response.setProducts(productResponses);
-
         return response;
+    }
+
+    /**
+     * Convierte un objeto {@link CustomerUpdateRequest} (DTO para actualización)
+     * en un objeto {@link Customer} (entidad de base de datos) preservando los valores existentes.
+     */
+    public Customer getCustomerFromUpdateRequest(
+            CustomerUpdateRequest request, Customer existingCustomer) {
+        if (request == null || existingCustomer == null) {
+            return existingCustomer;
+        }
+
+        existingCustomer.setFirstName(request.getFirstName());
+
+        existingCustomer.setLastName(request.getLastName());
+
+        existingCustomer.setBusinessName(request.getBusinessName());
+
+        existingCustomer.setAddress(request.getAddress());
+
+        existingCustomer.setPhone(request.getPhone());
+
+        existingCustomer.setEmail(request.getEmail());
+
+        return existingCustomer;
+    }
+
+    public PaymentResponse mapToPaymentResponse(PaymentResponse dto) {
+        PaymentResponse res = new PaymentResponse();
+        res.setStatus(dto.getStatus());
+        res.setMessage(dto.getMessage());
+        return res;
+    }
+
+    public ProductReportResponse mapToProductReportResponse(ProductReportResponse dto) {
+        ProductReportResponse res = new ProductReportResponse();
+        res.setProductId(dto.getProductId());
+        res.setType(dto.getType());
+        res.setSubType(dto.getSubType());
+        res.setBalance(dto.getBalance());
+        return res;
     }
 }

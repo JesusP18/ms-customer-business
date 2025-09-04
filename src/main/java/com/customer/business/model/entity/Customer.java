@@ -1,7 +1,5 @@
 package com.customer.business.model.entity;
 
-import java.util.List;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,6 +34,4 @@ public class Customer {
     private String phone;
 
     private String email;
-
-    private List<Product> products; // Lista de productos asociados al cliente
 }

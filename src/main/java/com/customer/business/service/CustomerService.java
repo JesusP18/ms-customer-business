@@ -1,5 +1,9 @@
 package com.customer.business.service;
 
+//import com.customer.business.model.DebitCardAssociationRequest;
+//import com.customer.business.model.PaymentRequest;
+//import com.customer.business.model.PaymentResponse;
+//import com.customer.business.model.ProductReportResponse;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
 import com.customer.business.repository.CustomerRepository;
@@ -79,5 +83,5 @@ public interface CustomerService {
      * @param customerId identificador del cliente
      * @return lista de IDs de productos
      */
-    public Flux<Product> getProductIds(String customerId);
+    public Flux<Product> getProducts(String customerId);
 }
