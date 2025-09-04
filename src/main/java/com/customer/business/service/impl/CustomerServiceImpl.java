@@ -125,30 +125,50 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         return customerRepository.findById(customerId)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Customer", customerId)))
-                .flatMap(customer -> productWebClient.get()
-                        .uri("/{customerId}", customerId)
-                        .retrieve()
-                        .bodyToFlux(ProductDTO.class)
-                        .collectList()
-                        .flatMap(existingProducts -> {
-                            String customerType = productValidatorService
-                                    .getCustomerType(customer.getCustomerType());
-                            String customerProfile = productValidatorService
-                                    .getCustomerProfile(customer.getProfile());
-                            String productType = newProduct
-                                    .getType();
-                            String productSubType = newProduct
-                                    .getSubType();
+                .switchIfEmpty(Mono.error(
+                        new ResourceNotFoundException("Customer", customerId)
+                        ))
+                .flatMap(customer ->
+                        // Protegemos la llamada GET que obtiene los productos existentes
+                        resilienceOperatorService.withCircuitBreaker(
+                                        productWebClient.get()
+                                                .uri("/{customerId}",
+                                                        customerId)
+                                                .retrieve()
+                                                .bodyToFlux(ProductDTO.class),
+                                        productServiceCircuitBreaker
+                                )
+                                .collectList()// convertimos a List<ProductDTO>
+                                // para validaciones
+                                .flatMap(existingProducts -> {
+                                    String customerType = productValidatorService
+                                            .getCustomerType(customer.getCustomerType());
+                                    String customerProfile = productValidatorService
+                                            .getCustomerProfile(customer.getProfile());
+                                    String productType = newProduct.getType();
+                                    String productSubType = newProduct.getSubType();
 
-                            // Validar reglas de negocio usando el servicio externo
-                            productValidatorService.validateBusinessRules(
-                                    customerType, customerProfile, productType,
-                                    productSubType, existingProducts);
+                                    // Validar reglas de negocio
+                                    // usando el servicio externo
+                                    productValidatorService.validateBusinessRules(
+                                            customerType, customerProfile, productType,
+                                            productSubType, existingProducts);
 
-                            // Si la validación pasa, enviar el producto al servicio externo
-                            return createAndSendProductRequest(customerId, newProduct);
-                        })
+                                    // Si la validación pasa, enviar el
+                                    // producto al servicio externo
+                                    return createAndSendProductRequest(
+                                            customerId, newProduct
+                                    );
+                                })
+                                // Si la llamada GET falla (timeout, circuito abierto,
+                                // etc.) mapeamos a excepción de negocio
+                                .onErrorMap(throwable ->
+                                        new IllegalArgumentException(
+                                                "Product service unavailable" +
+                                                        " or timed out while fetching " +
+                                                        "existing products", throwable
+                                        )
+                                )
                 );
     }
 
@@ -162,11 +182,17 @@ public class CustomerServiceImpl implements CustomerService {
         requestBody.put("type", newProduct.getType());
         requestBody.put("subType", newProduct.getSubType());
 
-        return productWebClient.post()
+        Mono<Void> call = productWebClient.post()
                 .uri("")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Void.class);
+
+        return resilienceOperatorService.withCircuitBreaker(call, productServiceCircuitBreaker)
+                .onErrorMap(
+                        throwable -> new IllegalArgumentException(
+                                "Product service unavailable or timed out",
+                                throwable));
     }
 
     /**
@@ -184,17 +210,26 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Mono<Void> removeProduct(String customerId, String productId) {
         return customerRepository.findById(customerId)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException(
-                        "Customer", customerId)))
+                .switchIfEmpty(Mono.error(
+                        new ResourceNotFoundException("Customer",
+                                customerId))
+                )
                 .flatMap(customer -> {
-                    // Use WebClient to send DELETE request
-                    // to external product service
-                    return productWebClient.delete()
+                    Mono<Void> call = productWebClient.delete()
                             .uri(
                                     "/{productId}/customers/{customerId}",
-                                    productId, customerId)
+                                    productId, customerId
+                            )
                             .retrieve()
                             .bodyToMono(Void.class);
+                    return resilienceOperatorService.withCircuitBreaker(
+                            call, productServiceCircuitBreaker
+                            )
+                            .onErrorMap(
+                                    throwable -> new IllegalArgumentException(
+                                            "Product service unavailable or timed out",
+                                            throwable)
+                            );
                 });
     }
 
@@ -211,14 +246,15 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Flux<Product> getProducts(String customerId) {
         return customerRepository.findById(customerId)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException(
-                        "Customer", customerId)))
-                .flatMapMany(customer -> {
-                    // Use WebClient to fetch products from external service
-                    return productWebClient.get()
-                            .uri("/{customerId}", customerId)
-                            .retrieve()
-                            .bodyToFlux(Product.class);
-                });
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Customer", customerId)))
+                .flatMapMany(customer ->
+                        resilienceOperatorService.withCircuitBreaker(
+                                productWebClient.get()
+                                        .uri("/{customerId}", customerId)
+                                        .retrieve()
+                                        .bodyToFlux(Product.class),
+                                productServiceCircuitBreaker
+                        )
+                );
     }
 }

@@ -30,7 +30,6 @@ resilience4j:
     instances:
       productService:
         baseConfig: default
-      # Agrega aquí otras instancias por cada downstream service:
 
   timelimiter:
     configs:

@@ -13,6 +13,7 @@ import java.time.Duration;
 @Component
 public class ResilienceOperatorService {
     private static final Logger log = LoggerFactory.getLogger(ResilienceOperatorService.class);
+
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(2);
 
     /**
@@ -28,12 +29,15 @@ public class ResilienceOperatorService {
             return Mono.empty();
         }
         return mono
-                .transform(CircuitBreakerOperator.of(circuitBreaker))
                 .timeout(DEFAULT_TIMEOUT)
+                .transform(CircuitBreakerOperator.of(circuitBreaker))
                 .onErrorMap(throwable -> {
-                    // Ajusta la excepción mapeada según tu política
-                    log.warn("[Resilience] fallo en downstream: {}", circuitBreaker.getName(), throwable);
-                    return new RuntimeException("Downstream service unavailable or timed out", throwable);
+                    log.warn("[Resilience] downstream failure (cb={}): {}",
+                            circuitBreaker.getName(), throwable.toString());
+                    return new RuntimeException(
+                            "Downstream service unavailable or timed out",
+                            throwable
+                    );
                 });
     }
 
@@ -45,11 +49,13 @@ public class ResilienceOperatorService {
             return Flux.empty();
         }
         return flux
-                .transform(CircuitBreakerOperator.of(circuitBreaker))
                 .timeout(DEFAULT_TIMEOUT)
+                .transform(CircuitBreakerOperator.of(circuitBreaker))
                 .onErrorResume(throwable -> {
-                    // Fallback para flujos: devolvemos empty por default
-                    log.warn("[Resilience] flujo fallback para {}: {}", circuitBreaker.getName(), throwable.toString());
+                    log.warn("[Resilience] flux fallback (cb={}): {}",
+                            circuitBreaker.getName(),
+                            throwable.toString()
+                    );
                     return Flux.empty();
                 });
     }

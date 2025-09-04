@@ -2,58 +2,48 @@ package com.customer.business.mapper;
 
 import com.customer.business.model.CustomerCreateRequest;
 import com.customer.business.model.CustomerResponse;
+import com.customer.business.model.CustomerUpdateRequest;
 import com.customer.business.model.entity.Customer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-@ExtendWith(MockitoExtension.class)
 class CustomerMapperTest {
 
     private final CustomerMapper mapper = new CustomerMapper();
 
     @Test
-    void getCustomerofCustomerRequestShouldReturnNullWhenRequestIsNull() {
+    void getCustomerofCustomerCreateRequestShouldReturnNullWhenRequestIsNull() {
         assertNull(mapper.getCustomerofCustomerCreateRequest(null));
     }
 
     @Test
-    void getCustomerofCustomerRequestShouldMapBasicFields() {
+    void getCustomerofCustomerCreateRequestShouldMapBasicFields() {
         CustomerCreateRequest request = new CustomerCreateRequest();
         request.setCustomerType(CustomerCreateRequest.CustomerTypeEnum.PERSONAL);
+        request.setProfile(CustomerCreateRequest.ProfileEnum.STANDARD);
         request.setFirstName("John");
         request.setLastName("Doe");
-        request.setProfile(CustomerCreateRequest.ProfileEnum.STANDARD);
+        request.setBusinessName("Business");
+        request.setDni("12345678");
+        request.setRuc("12345678901");
+        request.setAddress("Address");
+        request.setPhone("123456789");
+        request.setEmail("john@example.com");
 
         Customer result = mapper.getCustomerofCustomerCreateRequest(request);
 
         assertEquals("PERSONAL", result.getCustomerType());
+        assertEquals("STANDARD", result.getProfile());
         assertEquals("John", result.getFirstName());
         assertEquals("Doe", result.getLastName());
-        assertEquals("STANDARD", result.getProfile());
-    }
-
-    @Test
-    void getCustomerofCustomerRequestShouldMapProducts() {
-//        CustomerRequest request = new CustomerRequest();
-//        request.setCustomerType(CustomerRequest.CustomerTypeEnum.PERSONAL);
-//        request.setFirstName("John");
-//
-//        ProductRequest productRequest = new ProductRequest();
-//        productRequest.setId("prod1");
-//        productRequest.setCategory(ProductRequest.CategoryEnum.LIABILITY);
-//        productRequest.setType(ProductRequest.TypeEnum.ACCOUNT);
-//        productRequest.setSubType(ProductRequest.SubTypeEnum.SAVINGS);
-//
-//        Customer result = mapper.getCustomerofCustomerRequest(request);
-//
-//        assertNotNull(result.getProducts());
-//        assertEquals(1, result.getProducts().size());
-//        assertEquals("prod1", result.getProducts().get(0).getId());
-//        assertEquals("LIABILITY", result.getProducts().get(0).getCategory());
+        assertEquals("Business", result.getBusinessName());
+        assertEquals("12345678", result.getDni());
+        assertEquals("12345678901", result.getRuc());
+        assertEquals("Address", result.getAddress());
+        assertEquals("123456789", result.getPhone());
+        assertEquals("john@example.com", result.getEmail());
     }
 
     @Test
@@ -66,42 +56,60 @@ class CustomerMapperTest {
         Customer customer = new Customer();
         customer.setId("1");
         customer.setCustomerType("PERSONAL");
+        customer.setProfile("STANDARD");
         customer.setFirstName("John");
         customer.setLastName("Doe");
-        customer.setProfile("STANDARD");
+        customer.setBusinessName("Business");
+        customer.setDni("12345678");
+        customer.setRuc("12345678901");
+        customer.setAddress("Address");
+        customer.setPhone("123456789");
+        customer.setEmail("john@example.com");
 
         CustomerResponse result = mapper.getCustomerResponseOfCustomer(customer);
 
         assertEquals("1", result.getId());
-        assertEquals(CustomerResponse.CustomerTypeEnum.PERSONAL, result.getCustomerType());
+        assertEquals(
+                CustomerResponse.CustomerTypeEnum.PERSONAL, result.getCustomerType()
+        );
+        assertEquals(CustomerResponse.ProfileEnum.STANDARD, result.getProfile());
         assertEquals("John", result.getFirstName());
         assertEquals("Doe", result.getLastName());
-        assertEquals(CustomerResponse.ProfileEnum.STANDARD, result.getProfile());
+        assertEquals("Business", result.getBusinessName());
+        assertEquals("12345678", result.getDni());
+        assertEquals("12345678901", result.getRuc());
+        assertEquals("Address", result.getAddress());
+        assertEquals("123456789", result.getPhone());
+        assertEquals("john@example.com", result.getEmail());
     }
 
     @Test
-    void getCustomerResponseOfCustomerShouldHandleNullProducts() {
-//        Customer customer = new Customer();
-//        customer.setProducts(null);
-//
-//        CustomerResponse response = mapper.getCustomerResponseOfCustomer(customer);
-//
-//        assertNotNull(response);
-//        assertTrue(response.getProducts() == null || response.getProducts().isEmpty());
-    }
+    void getCustomerFromUpdateRequestShouldUpdateExistingCustomer() {
+        Customer existingCustomer = new Customer();
+        existingCustomer.setFirstName("OldName");
+        existingCustomer.setLastName("OldLastName");
+        existingCustomer.setBusinessName("OldBusiness");
+        existingCustomer.setAddress("OldAddress");
+        existingCustomer.setPhone("OldPhone");
+        existingCustomer.setEmail("old@example.com");
 
-    @Test
-    void getCustomerResponseOfCustomerShouldMapProducts() {
-//        Customer customer = new Customer();
-//        customer.setId("1");
-//
-//        Product product = new Product("prod1", "LIABILITY", "ACCOUNT", "SAVINGS");
-//        customer.setProducts(List.of(product));
-//
-//        CustomerResponse response = mapper.getCustomerResponseOfCustomer(customer);
-//
-//        assertNotNull(response.getProducts());
-//        assertEquals(1, response.getProducts().size());
-//        assertEquals("prod1", response.getProducts().get(0).getId());
+        CustomerUpdateRequest updateRequest = new CustomerUpdateRequest();
+        updateRequest.setFirstName("NewName");
+        updateRequest.setLastName("NewLastName");
+        updateRequest.setBusinessName("NewBusiness");
+        updateRequest.setAddress("NewAddress");
+        updateRequest.setPhone("NewPhone");
+        updateRequest.setEmail("new@example.com");
+
+        Customer result = mapper.getCustomerFromUpdateRequest(
+                updateRequest, existingCustomer
+        );
+
+        assertEquals("NewName", result.getFirstName());
+        assertEquals("NewLastName", result.getLastName());
+        assertEquals("NewBusiness", result.getBusinessName());
+        assertEquals("NewAddress", result.getAddress());
+        assertEquals("NewPhone", result.getPhone());
+        assertEquals("new@example.com", result.getEmail());
     }
 }

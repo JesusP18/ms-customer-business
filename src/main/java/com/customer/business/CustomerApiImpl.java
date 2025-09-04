@@ -1,14 +1,23 @@
 package com.customer.business;
 
+import com.customer.business.api.ApiApi;
 import com.customer.business.exception.ResourceNotFoundException;
 import com.customer.business.exception.ValidationException;
 import com.customer.business.model.CustomerCreateRequest;
 import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.CustomerUpdateRequest;
+import com.customer.business.model.DebitCardAssociationRequest;
+import com.customer.business.model.DebitCardBalanceResponse;
+import com.customer.business.model.PaymentRequest;
+import com.customer.business.model.PaymentResponse;
+import com.customer.business.model.ProductReportResponse;
 import com.customer.business.model.ProductRequest;
 import com.customer.business.model.ProductResponse;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
+import com.customer.business.service.DebitCardService;
+import com.customer.business.service.PaymentService;
+import com.customer.business.service.ReportService;
 import com.customer.business.validator.CreateCustomerValidator;
 import com.customer.business.validator.UpdateCustomerValidator;
 import lombok.AllArgsConstructor;
@@ -23,9 +32,10 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import com.customer.business.api.ApiApi;
 import com.customer.business.mapper.CustomerMapper;
 import com.customer.business.service.CustomerService;
+
+import java.time.LocalDate;
 
 /**
  * Implementación de {@link ApiApi} para la API de clientes en modo reactivo (WebFlux).
@@ -43,6 +53,12 @@ public class CustomerApiImpl implements ApiApi {
     private final UpdateCustomerValidator updateValidator;
 
     private final CreateCustomerValidator createValidator;
+
+    private final PaymentService paymentService;
+
+    private final DebitCardService debitCardService;
+
+    private final ReportService reportService;
 
     @Override
     public Mono<ResponseEntity<CustomerResponse>> createCustomer(
@@ -236,5 +252,122 @@ public class CustomerApiImpl implements ApiApi {
                 .doOnError(error ->
                         log.error("[REMOVE_PRODUCT_FROM_CUSTOMER] error id={}, productId={}",
                                 customerId, productId, error));
+    }
+
+    @Override
+    public Mono<ResponseEntity<PaymentResponse>> payCreditProduct(
+            String id,
+            Mono<PaymentRequest> req,
+            ServerWebExchange exchange) {
+        log.info("[PAY_CREDIT_PRODUCT] request customerId={}", id);
+        return req.flatMap(r -> paymentService.payCreditProduct(id, r))
+                .map(customerMapper::mapToPaymentResponse)
+                .map(ResponseEntity::ok)
+                .doOnSuccess(resp -> log.info(
+                        "[PAY_CREDIT_PRODUCT] payment processed for customerId={}", id))
+                .onErrorResume(IllegalArgumentException.class, ex -> {
+                    log.warn(
+                            "[PAY_CREDIT_PRODUCT] business error for customerId={}: {}",
+                            id, ex.getMessage()
+                    );
+                    return Mono.just(ResponseEntity.badRequest().build());
+                })
+                .onErrorResume(ResourceNotFoundException.class, ex -> {
+                    log.warn("[PAY_CREDIT_PRODUCT] not found customerId={}", id);
+                    return Mono.error(new ResourceNotFoundException("Customer", id));
+                })
+                .doOnError(
+                        error -> log.error(
+                                "[PAY_CREDIT_PRODUCT] unexpected error for customerId={}",
+                                id, error)
+                );
+    }
+
+    @Override
+    public Mono<ResponseEntity<String>> associateDebitCard(
+            String id, Mono<DebitCardAssociationRequest> req,
+            ServerWebExchange exchange) {
+        log.info("[ASSOCIATE_DEBIT_CARD] request customerId={}", id);
+
+        return req.flatMap(r -> debitCardService.associateDebitCard(id, r))
+                .map(ResponseEntity::ok)
+                .doOnSuccess(resp -> log.info(
+                        "[ASSOCIATE_DEBIT_CARD] debit card associated for customerId={}", id))
+                .onErrorResume(IllegalArgumentException.class, ex -> {
+                    log.warn(
+                            "[ASSOCIATE_DEBIT_CARD] business rule violation for customerId={}: {}",
+                            id, ex.getMessage());
+                    return Mono.just(ResponseEntity.badRequest().build());
+                })
+                .onErrorResume(ResourceNotFoundException.class, ex -> {
+                    log.warn("[ASSOCIATE_DEBIT_CARD] not found customerId={}", id);
+                    return Mono.error(new ResourceNotFoundException("Customer", id));
+                })
+                .doOnError(error -> log.error(
+                        "[ASSOCIATE_DEBIT_CARD] unexpected error for customerId={}", id, error));
+    }
+
+    @Override
+    public Mono<ResponseEntity<DebitCardBalanceResponse>> getMainAccountBalance(
+            String customerId, String cardId, ServerWebExchange exchange) {
+        log.info("[GET_MAIN_ACCOUNT_BALANCE] request customerId={}, cardId={}", customerId, cardId);
+
+        return debitCardService.getMainAccountId(customerId, cardId) // primero resolver productId
+                .flatMap(productId -> debitCardService.getMainAccountBalance(productId, cardId))
+                .map(ResponseEntity::ok)
+                .doOnSuccess(resp -> log.info(
+                        "[GET_MAIN_ACCOUNT_BALANCE] balance retrieved for customerId={}, cardId={}",
+                        customerId, cardId))
+                .onErrorResume(ResourceNotFoundException.class, ex -> {
+                    log.warn("[GET_MAIN_ACCOUNT_BALANCE] not found cardId={} for customerId={}",
+                            cardId, customerId);
+                    return Mono.error(new ResourceNotFoundException("Customer", customerId));
+                })
+                .onErrorResume(IllegalArgumentException.class, ex -> {
+                    log.warn("[GET_MAIN_ACCOUNT_BALANCE] " +
+                                    "invalid request for customerId={}, cardId={}: {}",
+                            customerId, cardId, ex.getMessage());
+                    return Mono.just(ResponseEntity.badRequest().build());
+                })
+                .doOnError(error -> log.error(
+                        "[GET_MAIN_ACCOUNT_BALANCE] " +
+                                "error retrieving balance for customerId={}, cardId={}",
+                        customerId, cardId, error));
+    }
+
+
+    @Override
+    public Mono<ResponseEntity<Flux<ProductReportResponse>>> getProductReports(
+            LocalDate from,
+            LocalDate to,
+            ServerWebExchange exchange) {
+        log.info("[GET_PRODUCT_REPORTS] request from={} to={}", from, to);
+
+        Flux<ProductReportResponse> mapped = reportService.generateProductReport(from, to)
+                .map(customerMapper::mapToProductReportResponse);
+
+        return Mono.just(ResponseEntity.ok(mapped))
+                .doOnSuccess(
+                        resp -> log.info("[GET_PRODUCT_REPORTS]" +
+                                " report generated from={} to={}", from, to))
+                .onErrorResume(
+                        IllegalArgumentException.class,
+                        ex -> {
+                            log.warn(
+                                    "[GET_PRODUCT_REPORTS] " +
+                                            "invalid parameters from={} to={}: {}",
+                                    from,
+                                    to,
+                                    ex.getMessage()
+                            );
+                            return Mono.just(ResponseEntity.badRequest().build());
+                        })
+                .doOnError(
+                        error ->
+                                log.error("[GET_PRODUCT_REPORTS] " +
+                                "error generating report from={} to={}",
+                                        from, to, error
+                                )
+                );
     }
 }

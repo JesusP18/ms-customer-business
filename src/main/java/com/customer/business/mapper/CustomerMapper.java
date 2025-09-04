@@ -1,12 +1,14 @@
 package com.customer.business.mapper;
 
+import com.customer.business.model.CustomerCreateRequest;
+import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.CustomerUpdateRequest;
+import com.customer.business.model.PaymentResponse;
+import com.customer.business.model.ProductReportResponse;
 import lombok.NoArgsConstructor;
 
 import org.springframework.stereotype.Component;
 
-import com.customer.business.model.CustomerCreateRequest;
-import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.entity.Customer;
 
 /**
@@ -136,5 +138,21 @@ public class CustomerMapper {
         existingCustomer.setEmail(request.getEmail());
 
         return existingCustomer;
+    }
+
+    public PaymentResponse mapToPaymentResponse(PaymentResponse dto) {
+        PaymentResponse res = new PaymentResponse();
+        res.setStatus(dto.getStatus());
+        res.setMessage(dto.getMessage());
+        return res;
+    }
+
+    public ProductReportResponse mapToProductReportResponse(ProductReportResponse dto) {
+        ProductReportResponse res = new ProductReportResponse();
+        res.setProductId(dto.getProductId());
+        res.setType(dto.getType());
+        res.setSubType(dto.getSubType());
+        res.setBalance(dto.getBalance());
+        return res;
     }
 }
