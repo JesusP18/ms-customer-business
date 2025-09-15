@@ -1,8 +1,9 @@
 package com.customer.business;
 
-import com.customer.business.api.ApiApi;
+import com.customer.business.cache.CacheService;
 import com.customer.business.exception.ResourceNotFoundException;
 import com.customer.business.exception.ValidationException;
+import com.customer.business.api.ApiApi;
 import com.customer.business.model.CustomerCreateRequest;
 import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.CustomerUpdateRequest;
@@ -60,6 +61,8 @@ public class CustomerApiImpl implements ApiApi {
 
     private final ReportService reportService;
 
+    private final CacheService cacheService;
+
     @Override
     public Mono<ResponseEntity<CustomerResponse>> createCustomer(
             Mono<CustomerCreateRequest> customerRequest, ServerWebExchange exchange) {
@@ -112,13 +115,11 @@ public class CustomerApiImpl implements ApiApi {
     public Mono<ResponseEntity<CustomerResponse>> getCustomerById(String customerId,
                                                                   ServerWebExchange exchange) {
         log.info("[GET_CUSTOMER_BY_ID] request id={}", customerId);
-        return customerService.findById(customerId)
+        return cacheService.getCachedCustomer(customerId)
+                .switchIfEmpty(customerService.findById(customerId))
                 .map(customerMapper::getCustomerResponseOfCustomer)
                 .map(ResponseEntity::ok)
-                .switchIfEmpty(Mono.fromSupplier(() -> {
-                    log.warn("[GET_CUSTOMER_BY_ID] not found id={}", customerId);
-                    return ResponseEntity.notFound().build();
-                }))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()))
                 .doOnError(error -> log.error("[GET_CUSTOMER_BY_ID] error id={}",
                         customerId, error));
     }

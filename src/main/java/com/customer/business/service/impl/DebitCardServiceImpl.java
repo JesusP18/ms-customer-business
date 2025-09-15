@@ -6,14 +6,16 @@ import com.customer.business.resilience.ResilienceOperatorService;
 import com.customer.business.service.DebitCardService;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 /**
- * Implementación en memoria de {@link DebitCardService}.
+ * Implementación de {@link DebitCardService}.
  * Maneja la asociación de tarjetas de débito con cuentas.
  */
+@Slf4j
 @Service
 public class DebitCardServiceImpl implements DebitCardService {
 
@@ -24,8 +26,8 @@ public class DebitCardServiceImpl implements DebitCardService {
     private final ResilienceOperatorService resilience;
 
     public DebitCardServiceImpl(WebClient productWebClient,
-                            CircuitBreakerRegistry cbRegistry,
-                            ResilienceOperatorService resilience) {
+                                CircuitBreakerRegistry cbRegistry,
+                                ResilienceOperatorService resilience) {
         this.productWebClient = productWebClient;
         this.productServiceCircuitBreaker = cbRegistry.circuitBreaker("productService");
         this.resilience = resilience;
@@ -38,6 +40,7 @@ public class DebitCardServiceImpl implements DebitCardService {
      * @param request    objeto con cardId y lista de accountIds
      * @return mensaje de éxito
      */
+    @Override
     public Mono<String> associateDebitCard(String customerId, DebitCardAssociationRequest request) {
         return productWebClient.post()
                 .uri("/customers/{customerId}/debit-cards/associate", customerId)
@@ -45,10 +48,12 @@ public class DebitCardServiceImpl implements DebitCardService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .transform(
-                        call ->
-                                resilience.withCircuitBreaker(
-                                        call, productServiceCircuitBreaker)
+                        call -> resilience.withCircuitBreaker(
+                                call, productServiceCircuitBreaker)
                 )
+                .doOnSuccess(result -> {
+                    log.debug("Debit card associated successfully for customer: {}", customerId);
+                })
                 .onErrorMap(
                         ex -> new IllegalArgumentException(
                                 "No se pudo asociar la tarjeta", ex)
@@ -62,17 +67,23 @@ public class DebitCardServiceImpl implements DebitCardService {
      * @param cardId    identificador de la tarjeta de débito
      * @return objeto con cardId, productId y balance
      */
+    @Override
     public Mono<DebitCardBalanceResponse> getMainAccountBalance(String productId, String cardId) {
-        Mono<DebitCardBalanceResponse> call = productWebClient.get()
-                .uri("/products/{productId}/debit-cards/{cardId}/balance",
-                        productId, cardId)
+        return productWebClient.get()
+                .uri("/products/{productId}/debit-cards/{cardId}/balance", productId, cardId)
                 .retrieve()
-                .bodyToMono(DebitCardBalanceResponse.class);
-
-        return resilience.withCircuitBreaker(call, productServiceCircuitBreaker)
+                .bodyToMono(DebitCardBalanceResponse.class)
+                .transform(
+                        call -> resilience.withCircuitBreaker(
+                                call,
+                                productServiceCircuitBreaker)
+                )
+                .doOnSuccess(balance ->
+                        log.debug("Balance retrieved for product: {}, card: {}", productId, cardId))
                 .onErrorMap(
-                        ex -> new IllegalArgumentException(
-                                "No se pudo obtener el balance", ex)
+                        ex ->
+                                new IllegalArgumentException(
+                                        "No se pudo obtener el balance", ex)
                 );
     }
 
@@ -83,11 +94,21 @@ public class DebitCardServiceImpl implements DebitCardService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .transform(
-                        call -> resilience.withCircuitBreaker(call, productServiceCircuitBreaker)
+                        call ->
+                                resilience.withCircuitBreaker(
+                                        call,
+                                        productServiceCircuitBreaker)
                 )
-                .onErrorMap(
-                        ex -> new IllegalArgumentException(
-                                "No se pudo obtener el productId principal", ex)
+                .doOnSuccess(accountId ->
+                        log.debug(
+                                "Main account ID retrieved for customer: {}, " +
+                                        "card: {}",
+                                customerId, cardId)
+                )
+                .onErrorMap(ex ->
+                                new IllegalArgumentException(
+                                        "No se pudo obtener el productId principal",
+                                        ex)
                 );
     }
 }

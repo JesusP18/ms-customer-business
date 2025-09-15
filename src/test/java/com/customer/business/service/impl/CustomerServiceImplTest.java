@@ -85,6 +85,8 @@ class CustomerServiceImplTest {
     void createShouldSaveCustomer() {
         Customer customer = new Customer();
         customer.setFirstName("John");
+        customer.setDni("11111111");
+        when(repository.existsByDni(customer.getDni())).thenReturn(Mono.just(false));
         when(repository.save(customer)).thenReturn(Mono.just(customer));
 
         StepVerifier.create(service.create(customer))
