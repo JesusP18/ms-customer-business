@@ -3,6 +3,7 @@ package com.customer.business.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.KafkaException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
@@ -73,5 +74,19 @@ public class GlobalExceptionHandler {
         response.put("message", ex.getMessage());
         
         return Mono.just(ResponseEntity.badRequest().body(response));
+    }
+
+    @ExceptionHandler(KafkaException.class)
+    public Mono<ResponseEntity<Map<String, Object>>> handleKafkaException(KafkaException ex) {
+        log.error("Kafka exception: {}", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        response.put("error", HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase());
+        response.put("code", "KAFKA_ERROR");
+        response.put("message", "Message broker unavailable");
+
+        return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response));
     }
 }

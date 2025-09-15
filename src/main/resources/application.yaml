@@ -4,6 +4,22 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/customer_business
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: customer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.customer.business.event.dto,com.customer.business.model"
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000
 server:
   port: 8081
 

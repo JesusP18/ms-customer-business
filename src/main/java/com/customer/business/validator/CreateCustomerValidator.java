@@ -2,15 +2,23 @@ package com.customer.business.validator;
 
 import com.customer.business.exception.ValidationException;
 import com.customer.business.model.CustomerCreateRequest;
+import com.customer.business.repository.CustomerRepository;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+@AllArgsConstructor
 @Component
 public class CreateCustomerValidator {
+
+    private CustomerRepository customerRepository;
 
     /**
      * Valida todas las reglas de negocio para crear un cliente
      */
     public void validate(CustomerCreateRequest request) {
+        if (request.getProfile() == null) {
+            request.setProfile(CustomerCreateRequest.ProfileEnum.STANDARD);
+        }
         validateRequiredFields(request);
         validateFieldFormats(request);
         validateEnumValues(request);
@@ -36,7 +44,7 @@ public class CreateCustomerValidator {
     private void validateRequiredFields(CustomerCreateRequest request) {
         customerTypeRequiredFieldValidate(request);
 
-        profileRequiredFieldValidate(request);
+//        profileRequiredFieldValidate(request);
 
         firstNameRequiredFieldValidate(request);
 
@@ -55,11 +63,11 @@ public class CreateCustomerValidator {
         }
     }
 
-    private static void profileRequiredFieldValidate(CustomerCreateRequest request) {
-        if (request.getProfile() == null) {
-            throw new ValidationException("Profile is required");
-        }
-    }
+//    private static void profileRequiredFieldValidate(CustomerCreateRequest request) {
+//        if (request.getProfile() == null) {
+//            throw new ValidationException("Profile is required");
+//        }
+//    }
 
     private static void firstNameRequiredFieldValidate(CustomerCreateRequest request) {
         if (request.getFirstName() == null) {

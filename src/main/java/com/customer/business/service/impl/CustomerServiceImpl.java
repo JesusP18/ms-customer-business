@@ -1,5 +1,6 @@
 package com.customer.business.service.impl;
 
+import com.customer.business.event.dto.CustomerEvent;
 import com.customer.business.exception.ResourceNotFoundException;
 import com.customer.business.exception.ValidationException;
 import com.customer.business.model.dto.ProductDTO;
@@ -7,6 +8,9 @@ import com.customer.business.resilience.ResilienceOperatorService;
 import com.customer.business.validator.AddProductValidatorService;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import com.customer.business.model.entity.Customer;
 import com.customer.business.model.entity.Product;
@@ -15,7 +19,9 @@ import com.customer.business.service.CustomerService;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,6 +29,7 @@ import java.util.Map;
  * Servicio que encapsula la lógica de negocio relacionada con los clientes.
  * Se comunica con el repositorio {@link CustomerRepository} para persistencia en MongoDB.
  */
+@Slf4j
 @AllArgsConstructor
 @Service
 public class CustomerServiceImpl implements CustomerService {
@@ -36,6 +43,10 @@ public class CustomerServiceImpl implements CustomerService {
     private final CircuitBreaker productServiceCircuitBreaker;
 
     private final ResilienceOperatorService resilienceOperatorService;
+
+    private final ReactiveRedisTemplate<String, Customer> redisTemplate;
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /**
      * Obtiene la lista de todos los clientes en la base de datos.
@@ -54,7 +65,15 @@ public class CustomerServiceImpl implements CustomerService {
      */
     @Override
     public Mono<Customer> findById(String customerId) {
-        return customerRepository.findById(customerId)
+        return redisTemplate.opsForValue().get(customerId)
+                .switchIfEmpty(
+                        customerRepository.findById(customerId)
+                                .flatMap(customer ->
+                                        redisTemplate.opsForValue()
+                                                .set(customerId, customer)
+                                                .thenReturn(customer)
+                                )
+                )
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Customer", customerId)));
     }
 
@@ -66,7 +85,28 @@ public class CustomerServiceImpl implements CustomerService {
      */
     @Override
     public Mono<Customer> create(Customer customer) {
-        return customerRepository.save(customer);
+        return customerRepository.existsByDni(customer.getDni())
+                .flatMap(exists -> {
+                    if (exists) {
+                        return Mono.error(new ValidationException("DNI already exists"));
+                    }
+                    return customerRepository.save(customer)
+                            .flatMap(savedCustomer -> {
+                                CustomerEvent event = new CustomerEvent(
+                                        "CREATED",
+                                        savedCustomer,
+                                        LocalDateTime.now()
+                                );
+                                kafkaTemplate.send("customer-events",
+                                        customer.getId(),
+                                        event
+                                );
+                                return redisTemplate
+                                        .opsForValue()
+                                        .set(savedCustomer.getId(), savedCustomer)
+                                        .thenReturn(savedCustomer);
+                            });
+                });
     }
 
     /**
@@ -79,6 +119,7 @@ public class CustomerServiceImpl implements CustomerService {
      * @return cliente actualizado
      * @throws IllegalArgumentException si el cliente no existe
      */
+    // Método update usando Redis y Kafka
     @Override
     public Mono<Customer> update(String customerId, Customer customer) {
         return customerRepository.findById(customerId)
@@ -86,11 +127,24 @@ public class CustomerServiceImpl implements CustomerService {
                 .flatMap(existing -> {
                     existing.setFirstName(customer.getFirstName());
                     existing.setLastName(customer.getLastName());
-                    existing.setBusinessName( customer.getBusinessName());
+                    existing.setBusinessName(customer.getBusinessName());
                     existing.setAddress(customer.getAddress());
                     existing.setPhone(customer.getPhone());
                     existing.setEmail(customer.getEmail());
-                    return customerRepository.save(existing);
+                    return customerRepository.save(existing)
+                            .flatMap(updatedCustomer -> {
+                                return sendCustomerEvent(
+                                        "UPDATED",
+                                        updatedCustomer
+                                )
+                                        .then(
+                                                redisTemplate
+                                                        .opsForValue()
+                                                        .set(updatedCustomer.getId(),
+                                                                updatedCustomer)
+                                        )
+                                        .thenReturn(updatedCustomer);
+                            });
                 });
     }
 
@@ -103,7 +157,12 @@ public class CustomerServiceImpl implements CustomerService {
     public Mono<Void> delete(String customerId) {
         return customerRepository.findById(customerId)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Customer", customerId)))
-                .flatMap(customer -> customerRepository.deleteById(customerId));
+                .flatMap(customer -> {
+                    return sendCustomerEvent("DELETED", customer)
+                            .then(customerRepository.deleteById(customerId))
+                            .then(redisTemplate.opsForValue().delete(customerId))
+                            .then();
+                });
     }
 
     /**
@@ -125,21 +184,16 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         return customerRepository.findById(customerId)
-                .switchIfEmpty(Mono.error(
-                        new ResourceNotFoundException("Customer", customerId)
-                        ))
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Customer", customerId)))
                 .flatMap(customer ->
-                        // Protegemos la llamada GET que obtiene los productos existentes
                         resilienceOperatorService.withCircuitBreaker(
                                         productWebClient.get()
-                                                .uri("/{customerId}",
-                                                        customerId)
+                                                .uri("/{customerId}", customerId)
                                                 .retrieve()
                                                 .bodyToFlux(ProductDTO.class),
                                         productServiceCircuitBreaker
                                 )
-                                .collectList()// convertimos a List<ProductDTO>
-                                // para validaciones
+                                .collectList()
                                 .flatMap(existingProducts -> {
                                     String customerType = productValidatorService
                                             .getCustomerType(customer.getCustomerType());
@@ -148,25 +202,22 @@ public class CustomerServiceImpl implements CustomerService {
                                     String productType = newProduct.getType();
                                     String productSubType = newProduct.getSubType();
 
-                                    // Validar reglas de negocio
-                                    // usando el servicio externo
                                     productValidatorService.validateBusinessRules(
                                             customerType, customerProfile, productType,
                                             productSubType, existingProducts);
 
-                                    // Si la validación pasa, enviar el
-                                    // producto al servicio externo
                                     return createAndSendProductRequest(
                                             customerId, newProduct
                                     );
                                 })
-                                // Si la llamada GET falla (timeout, circuito abierto,
-                                // etc.) mapeamos a excepción de negocio
                                 .onErrorMap(throwable ->
                                         new IllegalArgumentException(
-                                                "Product service unavailable" +
-                                                        " or timed out while fetching " +
-                                                        "existing products", throwable
+                                                "Product service " +
+                                                        "unavailable or " +
+                                                        "timed out while " +
+                                                        "fetching existing " +
+                                                        "products",
+                                                throwable
                                         )
                                 )
                 );
@@ -256,5 +307,15 @@ public class CustomerServiceImpl implements CustomerService {
                                 productServiceCircuitBreaker
                         )
                 );
+    }
+
+    private Mono<Void> sendCustomerEvent(String eventType, Customer customer) {
+        return Mono.fromRunnable(() -> {
+            CustomerEvent event = new CustomerEvent(eventType, customer, LocalDateTime.now());
+            kafkaTemplate.send("customer-events", customer.getId(), event).addCallback(
+                    result -> log.debug("Customer event sent successfully: {}", event),
+                    ex -> log.error("Failed to send customer event: {}", event, ex)
+            );
+        }).subscribeOn(Schedulers.boundedElastic()).then();
     }
 }
