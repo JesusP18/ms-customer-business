@@ -188,7 +188,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .flatMap(customer ->
                         resilienceOperatorService.withCircuitBreaker(
                                         productWebClient.get()
-                                                .uri("/{customerId}", customerId)
+                                                .uri("/customer/{customerId}", customerId)
                                                 .retrieve()
                                                 .bodyToFlux(ProductDTO.class),
                                         productServiceCircuitBreaker
