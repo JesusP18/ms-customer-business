@@ -3,6 +3,8 @@ package com.customer.business.mapper;
 import com.customer.business.model.CustomerCreateRequest;
 import com.customer.business.model.CustomerResponse;
 import com.customer.business.model.CustomerUpdateRequest;
+import com.customer.business.model.PaymentResponse;
+import com.customer.business.model.ProductReportResponse;
 import com.customer.business.model.entity.Customer;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +49,16 @@ class CustomerMapperTest {
     }
 
     @Test
+    void getCustomerofCustomerCreateRequestShouldHandleNullEnums() {
+        CustomerCreateRequest request = new CustomerCreateRequest();
+        request.setCustomerType(null);
+        request.setProfile(null);
+        Customer result = mapper.getCustomerofCustomerCreateRequest(request);
+        assertNull(result.getCustomerType());
+        assertNull(result.getProfile());
+    }
+
+    @Test
     void getCustomerResponseOfCustomerShouldReturnNullWhenCustomerIsNull() {
         assertNull(mapper.getCustomerResponseOfCustomer(null));
     }
@@ -84,6 +96,16 @@ class CustomerMapperTest {
     }
 
     @Test
+    void getCustomerResponseOfCustomerShouldHandleInvalidEnums() {
+        Customer customer = new Customer();
+        customer.setCustomerType("INVALID");
+        customer.setProfile("INVALID");
+        CustomerResponse result = mapper.getCustomerResponseOfCustomer(customer);
+        assertNull(result.getCustomerType());
+        assertNull(result.getProfile());
+    }
+
+    @Test
     void getCustomerFromUpdateRequestShouldUpdateExistingCustomer() {
         Customer existingCustomer = new Customer();
         existingCustomer.setFirstName("OldName");
@@ -111,5 +133,43 @@ class CustomerMapperTest {
         assertEquals("NewAddress", result.getAddress());
         assertEquals("NewPhone", result.getPhone());
         assertEquals("new@example.com", result.getEmail());
+    }
+
+    @Test
+    void getCustomerFromUpdateRequestShouldReturnExistingWhenRequestIsNull() {
+        Customer existing = new Customer();
+        Customer result = mapper.getCustomerFromUpdateRequest(null, existing);
+        assertEquals(existing, result);
+    }
+
+    @Test
+    void getCustomerFromUpdateRequestShouldReturnNullWhenExistingIsNull() {
+        CustomerUpdateRequest req = new CustomerUpdateRequest();
+        Customer result = mapper.getCustomerFromUpdateRequest(req, null);
+        assertNull(result);
+    }
+
+    @Test
+    void mapToPaymentResponseShouldCopyFields() {
+        PaymentResponse dto = new PaymentResponse();
+        dto.setStatus("OK");
+        dto.setMessage("Pago realizado");
+        PaymentResponse res = mapper.mapToPaymentResponse(dto);
+        assertEquals("OK", res.getStatus());
+        assertEquals("Pago realizado", res.getMessage());
+    }
+
+    @Test
+    void mapToProductReportResponseShouldCopyFields() {
+        ProductReportResponse dto = new ProductReportResponse();
+        dto.setProductId("P1");
+        dto.setType("T");
+        dto.setSubType("S");
+        dto.setBalance(100.0);
+        ProductReportResponse res = mapper.mapToProductReportResponse(dto);
+        assertEquals("P1", res.getProductId());
+        assertEquals("T", res.getType());
+        assertEquals("S", res.getSubType());
+        assertEquals(100.0, res.getBalance());
     }
 }
