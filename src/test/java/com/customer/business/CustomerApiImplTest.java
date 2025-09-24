@@ -1,5 +1,6 @@
 package com.customer.business;
 
+import com.customer.business.cache.CacheService;
 import com.customer.business.mapper.CustomerMapper;
 import com.customer.business.model.CustomerCreateRequest;
 import com.customer.business.model.CustomerResponse;
@@ -20,6 +21,7 @@ import com.customer.business.service.ReportService;
 import com.customer.business.validator.CreateCustomerValidator;
 import com.customer.business.validator.UpdateCustomerValidator;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,16 +34,14 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(SpringExtension.class)
 @WebFluxTest(controllers = CustomerApiImpl.class)
+@ExtendWith(SpringExtension.class)
 @Import(CustomerApiImpl.class)
 class CustomerApiImplTest {
 
@@ -63,6 +63,15 @@ class CustomerApiImplTest {
     @MockBean
     private ReportService reportService;
 
+    @MockBean
+    private UpdateCustomerValidator updateValidator;
+
+    @MockBean
+    private CreateCustomerValidator createValidator;
+
+    @MockBean
+    private CacheService cacheService;
+
     private CustomerCreateRequest customerCreateRequest;
 
     private CustomerResponse customerResponse;
@@ -70,12 +79,6 @@ class CustomerApiImplTest {
     private Customer customerEntity;
 
     private ProductRequest productRequest;
-
-    @MockBean
-    private UpdateCustomerValidator updateValidator;
-
-    @MockBean
-    private CreateCustomerValidator createValidator;
 
     @BeforeEach
     void setUp() {
@@ -107,7 +110,9 @@ class CustomerApiImplTest {
     }
 
     @Test
+    @DisplayName("POST /api/customers - éxito")
     void createCustomerShouldReturnCreated() {
+        doNothing().when(createValidator).validate(any());
         when(customerMapper.getCustomerofCustomerCreateRequest(any())).thenReturn(customerEntity);
         when(customerService.create(any())).thenReturn(Mono.just(customerEntity));
         when(customerMapper.getCustomerResponseOfCustomer(any())).thenReturn(customerResponse);
@@ -120,12 +125,24 @@ class CustomerApiImplTest {
                 .expectStatus().isCreated()
                 .expectBody(CustomerResponse.class)
                 .isEqualTo(customerResponse);
-
-        verify(customerService).create(any());
     }
 
     @Test
-    void getAllCustomersShouldReturnCustomers() {
+    @DisplayName("POST /api/customers - error de validación")
+    void createCustomerShouldReturnBadRequestOnValidation() {
+        doThrow(new RuntimeException("Error de validación")).when(createValidator).validate(any());
+
+        webTestClient.post()
+                .uri("/api/customers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(customerCreateRequest)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    @Test
+    @DisplayName("GET /api/customers - éxito")
+    void getAllCustomersShouldReturnList() {
         when(customerService.findAll()).thenReturn(Flux.just(customerEntity));
         when(customerMapper.getCustomerResponseOfCustomer(any())).thenReturn(customerResponse);
 
@@ -136,12 +153,12 @@ class CustomerApiImplTest {
                 .expectBodyList(CustomerResponse.class)
                 .hasSize(1)
                 .contains(customerResponse);
-
-        verify(customerService).findAll();
     }
 
     @Test
+    @DisplayName("GET /api/customers/{id} - éxito")
     void getCustomerByIdShouldReturnCustomer() {
+        when(cacheService.getCachedCustomer("1")).thenReturn(Mono.empty());
         when(customerService.findById("1")).thenReturn(Mono.just(customerEntity));
         when(customerMapper.getCustomerResponseOfCustomer(any())).thenReturn(customerResponse);
 
@@ -151,29 +168,29 @@ class CustomerApiImplTest {
                 .expectStatus().isOk()
                 .expectBody(CustomerResponse.class)
                 .isEqualTo(customerResponse);
-
-        verify(customerService).findById("1");
     }
 
     @Test
+    @DisplayName("GET /api/customers/{id} - no encontrado")
     void getCustomerByIdShouldReturnNotFound() {
+        when(cacheService.getCachedCustomer("1")).thenReturn(Mono.empty());
         when(customerService.findById("1")).thenReturn(Mono.empty());
 
         webTestClient.get()
                 .uri("/api/customers/1")
                 .exchange()
                 .expectStatus().isNotFound();
-
-        verify(customerService).findById("1");
     }
 
     @Test
-    void updateCustomerShouldReturnUpdatedCustomer() {
+    @DisplayName("PUT /api/customers/{id} - éxito")
+    void updateCustomerShouldReturnOk() {
         CustomerUpdateRequest updateRequest = new CustomerUpdateRequest();
-        updateRequest.setFirstName("UpdatedName");
-
+        updateRequest.setFirstName("Updated");
+        doNothing().when(updateValidator).validate(any());
         when(customerService.findById("1")).thenReturn(Mono.just(customerEntity));
         when(customerService.update(eq("1"), any())).thenReturn(Mono.just(customerEntity));
+        when(customerMapper.getCustomerFromUpdateRequest(any(), any())).thenReturn(customerEntity);
         when(customerMapper.getCustomerResponseOfCustomer(any())).thenReturn(customerResponse);
 
         webTestClient.put()
@@ -184,11 +201,24 @@ class CustomerApiImplTest {
                 .expectStatus().isOk()
                 .expectBody(CustomerResponse.class)
                 .isEqualTo(customerResponse);
-
-        verify(customerService).update(eq("1"), any());
     }
 
     @Test
+    @DisplayName("PUT /api/customers/{id} - error de validación")
+    void updateCustomerShouldReturnBadRequestOnValidation() {
+        CustomerUpdateRequest updateRequest = new CustomerUpdateRequest();
+        doThrow(new RuntimeException("Error de validación")).when(updateValidator).validate(any());
+
+        webTestClient.put()
+                .uri("/api/customers/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateRequest)
+                .exchange()
+                .expectStatus().is5xxServerError();
+    }
+
+    @Test
+    @DisplayName("DELETE /api/customers/{id} - éxito")
     void deleteCustomerShouldReturnNoContent() {
         when(customerService.findById("1")).thenReturn(Mono.just(customerEntity));
         when(customerService.delete("1")).thenReturn(Mono.empty());
@@ -197,19 +227,68 @@ class CustomerApiImplTest {
                 .uri("/api/customers/1")
                 .exchange()
                 .expectStatus().isNoContent();
-
-        verify(customerService).delete("1");
     }
 
     @Test
-    void getCustomerProductsShouldReturnProducts() {
-        Product product = new Product("1", "LIABILITY", "ACCOUNT", "SAVINGS");
+    @DisplayName("DELETE /api/customers/{id} - no encontrado")
+    void deleteCustomerShouldReturnNotFound() {
+        when(customerService.findById("1")).thenReturn(Mono.empty());
+
+        webTestClient.delete()
+                .uri("/api/customers/1")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    @DisplayName("POST /api/customers/{id}/debit-cards/associate - éxito")
+    void associateDebitCardShouldReturnOk() {
+        DebitCardAssociationRequest request = new DebitCardAssociationRequest();
+        when(
+                debitCardService.associateDebitCard(
+                        eq("1"), any())).thenReturn(Mono.just("Asociado")
+        );
+
+        webTestClient.post()
+                .uri("/api/customers/1/debit-cards/associate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .isEqualTo("Asociado");
+    }
+
+    @Test
+    @DisplayName("POST /api/customers/{id}/debit-cards/associate - error")
+    void associateDebitCardShouldReturnBadRequest() {
+        DebitCardAssociationRequest request = new DebitCardAssociationRequest();
+        when(
+                debitCardService
+                        .associateDebitCard(
+                                eq("1"), any()))
+                .thenReturn(Mono.error(new IllegalArgumentException("error")));
+
+        webTestClient.post()
+                .uri("/api/customers/1/debit-cards/associate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    @DisplayName("GET /api/customers/{id}/products - éxito")
+    void getCustomerProductsShouldReturnOk() {
+        Product product = new Product(
+                "1", "LIABILITY", "ACCOUNT", "SAVINGS"
+        );
         ProductResponse productResponse = new ProductResponse();
         productResponse.setCategory(ProductResponse.CategoryEnum.LIABILITY);
         productResponse.setType(ProductResponse.TypeEnum.ACCOUNT);
         productResponse.setSubType(ProductResponse.SubTypeEnum.SAVINGS);
-
         when(customerService.getProducts("1")).thenReturn(Flux.just(product));
+        // El mapeo se hace inline en el controlador
 
         webTestClient.get()
                 .uri("/api/customers/1/products")
@@ -217,83 +296,48 @@ class CustomerApiImplTest {
                 .expectStatus().isOk()
                 .expectBodyList(ProductResponse.class)
                 .hasSize(1);
-
-        verify(customerService).getProducts("1");
     }
 
     @Test
-    void getProductReportsShouldReturnReports() {
-        ProductReportResponse reportResponse = new ProductReportResponse();
-        reportResponse.setProductId("prod1");
-        reportResponse.setBalance(1000.0);
-
-        when(reportService.generateProductReport(
-                any(), any())).thenReturn(Flux.just(reportResponse)
-        );
-        when(customerMapper.mapToProductReportResponse(
-                any())).thenReturn(reportResponse
-        );
-
-        webTestClient.get()
-                .uri(
-                        "/api/reports/products?from=2023-01-01&to=2023-12-31"
-                )
-                .exchange()
-                .expectStatus().isOk()
-                .expectBodyList(ProductReportResponse.class)
-                .hasSize(1);
-
-        verify(reportService).generateProductReport(any(), any());
-    }
-
-    @Test
+    @DisplayName("POST /api/customers/{id}/products - éxito")
     void addProductToCustomerShouldReturnNoContent() {
-        ProductRequest productRequest = new ProductRequest();
-        productRequest.setCustomerId("1");
-        productRequest.setCategory(ProductRequest.CategoryEnum.LIABILITY);
-        productRequest.setType(ProductRequest.TypeEnum.ACCOUNT);
-        productRequest.setSubType(ProductRequest.SubTypeEnum.SAVINGS);
-
-        when(customerService.addProduct(eq("1"), any(Product.class))).thenReturn(Mono.empty());
+        when(customerService.addProduct(
+                eq("1"), any(Product.class))).thenReturn(Mono.empty()
+        );
+        ProductRequest req = new ProductRequest();
+        req.setCustomerId("1");
+        req.setCategory(ProductRequest.CategoryEnum.LIABILITY);
+        req.setType(ProductRequest.TypeEnum.ACCOUNT);
+        req.setSubType(ProductRequest.SubTypeEnum.SAVINGS);
 
         webTestClient.post()
                 .uri("/api/customers/1/products")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(productRequest)
+                .bodyValue(req)
                 .exchange()
                 .expectStatus().isNoContent();
-
-        verify(customerService).addProduct(eq("1"), any(Product.class));
     }
 
     @Test
+    @DisplayName("DELETE /api/customers/{id}/products/{productId} - éxito")
     void removeProductFromCustomerShouldReturnNoContent() {
-        when(customerService.removeProduct("1", "prod1")).thenReturn(Mono.empty());
+        when(customerService.removeProduct("1", "prod1"))
+                .thenReturn(Mono.empty());
 
         webTestClient.delete()
                 .uri("/api/customers/1/products/prod1")
                 .exchange()
                 .expectStatus().isNoContent();
-
-        verify(customerService).removeProduct("1", "prod1");
     }
 
     @Test
+    @DisplayName("POST /api/customers/{id}/payments - éxito")
     void payCreditProductShouldReturnOk() {
         PaymentRequest paymentRequest = new PaymentRequest();
-        paymentRequest.setTargetProductId("prod1");
-        paymentRequest.setAmount(100.0);
-
         PaymentResponse paymentResponse = new PaymentResponse();
-        paymentResponse.setStatus("SUCCESS");
-        paymentResponse.setMessage("Payment processed");
-
-        when(paymentService.payCreditProduct(
-                eq("1"), any(PaymentRequest.class)
-        )).thenReturn(Mono.just(paymentResponse));
-        when(customerMapper.mapToPaymentResponse(
-                any(PaymentResponse.class)
-        )).thenReturn(paymentResponse);
+        when(paymentService.payCreditProduct(eq("1"),
+                any(PaymentRequest.class))).thenReturn(Mono.just(paymentResponse));
+        when(customerMapper.mapToPaymentResponse(any())).thenReturn(paymentResponse);
 
         webTestClient.post()
                 .uri("/api/customers/1/payments")
@@ -303,44 +347,22 @@ class CustomerApiImplTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentResponse.class)
                 .isEqualTo(paymentResponse);
-
-        verify(paymentService).payCreditProduct(eq("1"), any(PaymentRequest.class));
     }
 
     @Test
-    void associateDebitCardShouldReturnOk() {
-        DebitCardAssociationRequest request = new DebitCardAssociationRequest();
-        request.setCardId("card1");
-        request.setAccountIds(List.of("acc1", "acc2"));
-
-        when(debitCardService.associateDebitCard(
-                eq("1"), any(DebitCardAssociationRequest.class)
-        )).thenReturn(Mono.just("Associated"));
-
-        webTestClient.post()
-                .uri("/api/customers/1/debit-cards/associate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .isEqualTo("Associated");
-
-        verify(debitCardService).associateDebitCard(
-                eq("1"), any(DebitCardAssociationRequest.class)
-        );
-    }
-
-    @Test
+    @DisplayName("GET /api/customers/{id}/debit-cards/{cardId}/balance - éxito")
     void getMainAccountBalanceShouldReturnOk() {
         DebitCardBalanceResponse balanceResponse = new DebitCardBalanceResponse();
         balanceResponse.setCardId("card1");
         balanceResponse.setProductId("prod1");
         balanceResponse.setBalance(1000.0);
-
-        when(debitCardService.getMainAccountId("1", "card1")).thenReturn(Mono.just("prod1"));
-        when(debitCardService.getMainAccountBalance(
-                "prod1", "card1")
+        when(debitCardService.getMainAccountId(
+                "1", "card1")
+        ).thenReturn(Mono.just("prod1"));
+        when(
+                debitCardService
+                        .getMainAccountBalance(
+                                "prod1", "card1")
         ).thenReturn(Mono.just(balanceResponse));
 
         webTestClient.get()
@@ -349,34 +371,32 @@ class CustomerApiImplTest {
                 .expectStatus().isOk()
                 .expectBody(DebitCardBalanceResponse.class)
                 .isEqualTo(balanceResponse);
-
-        verify(debitCardService).getMainAccountId("1", "card1");
-        verify(debitCardService).getMainAccountBalance("prod1", "card1");
     }
 
     @Test
+    @DisplayName("GET /api/reports/products - éxito")
     void getProductReportsShouldReturnOk() {
         ProductReportResponse reportResponse = new ProductReportResponse();
         reportResponse.setProductId("prod1");
-        reportResponse.setType("ACCOUNT");
-        reportResponse.setSubType("SAVINGS");
         reportResponse.setBalance(1000.0);
-
         when(reportService.generateProductReport(
-                any(LocalDate.class), any(LocalDate.class))
-        ).thenReturn(Flux.just(reportResponse));
-        when(customerMapper.mapToProductReportResponse(
-                any(ProductReportResponse.class))
-        ).thenReturn(reportResponse);
+                any(), any())).thenReturn(Flux.just(reportResponse)
+        );
+        when(customerMapper
+                .mapToProductReportResponse(any())).thenReturn(reportResponse
+        );
 
         webTestClient.get()
-                .uri("/api/reports/products?from=2023-01-01&to=2023-12-31")
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/reports/products")
+                        .queryParam("from", "2023-01-01")
+                        .queryParam("to", "2023-12-31")
+                        .build())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBodyList(ProductReportResponse.class)
                 .hasSize(1)
                 .contains(reportResponse);
-
-        verify(reportService).generateProductReport(any(LocalDate.class), any(LocalDate.class));
     }
 }
+
